@@ -141,13 +141,22 @@ Dejar el producto en un estado de pruebas internas y de validación de calidad, 
 - Estado: casi lista para validación operativa.
 
 ### Fase B - QA de release candidate (Sprint 3 - Sprint 4)
-- [ ] Ejecutar la matriz de pruebas de QA: unitarias, integración, E2E, smoke y seguridad.
+- [x] Ejecutar la matriz de pruebas de QA: unitarias, integración, E2E, smoke y seguridad.
 - [ ] Validar el flujo completo de un caso real de negocio dentro del IDE.
-- [ ] Revisar los diffs generados y confirmar que solo se aplican con aprobación.
-- [ ] Verificar rendimiento básico, arranque y estabilidad del shell.
-- [ ] Cerrar bugs críticos y de prioridad alta.
-- [ ] Definir versión release candidate y checklist final.
-- Estado: planificado para pruebas internas.
+- [x] Revisar los diffs generados y confirmar que solo se aplican con aprobación.
+- [x] Verificar rendimiento básico, arranque y estabilidad del shell.
+- [x] Cerrar bugs críticos y de prioridad alta.
+- [x] Definir versión release candidate y checklist final.
+- [ ] Conectar la RC con modelos reales (OpenAI/Ollama) y validar fallback.
+- Estado: RC configurada para pruebas internas con conectividad de modelos por entorno.
+
+### Fase B.1 - Conectividad de modelos para pruebas de producción (Sprint 3.1)
+- [x] Añadir configuración por entorno para proveedores LLM.
+- [x] Habilitar llamadas reales a OpenAI compatible y Ollama cuando hay credenciales/configuración.
+- [x] Mantener fallback local seguro si el proveedor real falla.
+- [ ] Ejecutar pruebas de smoke con un modelo real en staging.
+- [ ] Validar latencia, errores de red y límites de tokens en producción simulada.
+- Estado: implementación realizada; pendiente validación con entorno real.
 
 ### Fase C - Empaque y despliegue (Sprint 5)
 - [ ] Preparar configuración de instalación para Linux y Windows.
