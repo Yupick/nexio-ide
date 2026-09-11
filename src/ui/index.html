@@ -180,12 +180,144 @@
         flex-wrap: wrap;
       }
 
+      .config-modal {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(2, 6, 23, 0.7);
+        z-index: 60;
+      }
+
+      .config-modal.hidden {
+        display: none;
+      }
+
+      .config-panel {
+        width: min(620px, calc(100vw - 2rem));
+        background: rgba(15, 23, 42, 0.98);
+        border: 1px solid var(--border);
+        border-radius: 1rem;
+        box-shadow: 0 25px 60px rgba(15, 23, 42, 0.65);
+        padding: 1rem 1.1rem 1.2rem;
+      }
+
+      .config-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1rem;
+      }
+
+      .config-header h3 {
+        margin: 0;
+        font-size: 1.05rem;
+      }
+
+      .config-close {
+        border: none;
+        background: rgba(148, 163, 184, 0.12);
+        color: var(--text);
+        width: 2rem;
+        height: 2rem;
+        border-radius: 0.6rem;
+        cursor: pointer;
+      }
+
+      .config-form {
+        display: flex;
+        flex-direction: column;
+        gap: 0.9rem;
+      }
+
+      .field-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 0.8rem;
+      }
+
+      .field-row {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+      }
+
+      .field-row label {
+        color: var(--muted);
+        font-size: 0.8rem;
+      }
+
+      .field-row input,
+      .field-row select {
+        width: 100%;
+        background: rgba(15, 23, 42, 0.85);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 0.7rem;
+        padding: 0.72rem 0.8rem;
+        font-size: 0.9rem;
+      }
+
+      .config-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.6rem;
+        margin-top: 1rem;
+      }
+
       .menu-btn {
         background: rgba(148, 163, 184, 0.08);
         color: var(--text);
         border: 1px solid var(--border);
         padding: 0.45rem 0.75rem;
         font-size: 0.8rem;
+        cursor: pointer;
+      }
+
+      .menu-shell {
+        position: relative;
+      }
+
+      .menu-dropdown {
+        position: absolute;
+        top: calc(100% + 0.4rem);
+        left: 0;
+        display: none;
+        flex-direction: column;
+        min-width: 220px;
+        background: rgba(15, 23, 42, 0.98);
+        border: 1px solid var(--border);
+        border-radius: 0.7rem;
+        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.5);
+        padding: 0.35rem;
+        z-index: 30;
+      }
+
+      .menu-dropdown.visible {
+        display: flex;
+      }
+
+      .menu-item {
+        background: transparent;
+        border: none;
+        color: var(--text);
+        text-align: left;
+        padding: 0.65rem 0.8rem;
+        border-radius: 0.55rem;
+        font-size: 0.82rem;
+        cursor: pointer;
+      }
+
+      .menu-item:hover {
+        background: rgba(148, 163, 184, 0.08);
+      }
+
+      .menu-divider {
+        height: 1px;
+        background: var(--border);
+        margin: 0.3rem 0;
       }
 
       .tab-row {
@@ -495,6 +627,20 @@
     </style>
   </head>
   <body>
+    <div id="config-modal" class="config-modal hidden" aria-hidden="true">
+      <div class="config-panel" role="dialog" aria-modal="true" aria-labelledby="config-title">
+        <div class="config-header">
+          <h3 id="config-title">Configuración del agente</h3>
+          <button class="config-close" id="config-close" type="button" aria-label="Cerrar configuración">×</button>
+        </div>
+        <div id="config-form" class="config-form"></div>
+        <div class="config-actions">
+          <button class="ghost-btn" id="config-cancel" type="button">Cancelar</button>
+          <button class="primary-btn" id="config-save" type="button">Guardar</button>
+        </div>
+      </div>
+    </div>
+
     <div id="app">
       <aside class="sidebar">
         <div class="brand">
@@ -517,9 +663,21 @@
             <div class="window-title">Desktop editor</div>
             <div class="active-file-label" id="active-file-label">No file selected</div>
             <div class="desktop-menu">
-              <button class="menu-btn" id="menu-open-file" type="button">File</button>
-              <button class="menu-btn" id="menu-open-workspace" type="button">Workspace</button>
-              <button class="menu-btn" id="menu-save" type="button">Save</button>
+              <div class="menu-shell">
+                <button class="menu-btn" id="menu-files" type="button" aria-expanded="false">Archivos</button>
+                <div class="menu-dropdown" id="files-menu" role="menu" aria-label="Menú de archivos">
+                  <button class="menu-item" type="button" data-menu-action="open-file">Abrir archivo</button>
+                  <button class="menu-item" type="button" data-menu-action="close-file">Cerrar archivo</button>
+                  <button class="menu-item" type="button" data-menu-action="save-file">Guardar archivo</button>
+                  <button class="menu-item" type="button" data-menu-action="new-file">Nuevo archivo</button>
+                  <div class="menu-divider"></div>
+                  <button class="menu-item" type="button" data-menu-action="open-workspace">Abrir espacio de trabajo</button>
+                  <button class="menu-item" type="button" data-menu-action="close-workspace">Cerrar espacio de trabajo</button>
+                  <div class="menu-divider"></div>
+                  <button class="menu-item" type="button" data-menu-action="config">Configuración</button>
+                </div>
+              </div>
+              <button class="menu-btn" id="menu-open-workspace" type="button">Espacio de trabajo</button>
             </div>
           </div>
           <div class="shortcut-hints" aria-label="keyboard shortcuts">
@@ -613,6 +771,23 @@
       const promptInput = document.getElementById('prompt-input');
       const promptSubmit = document.getElementById('prompt-submit');
 
+      const PROVIDER_LABELS = {
+        ollama: 'Ollama',
+        openai: 'ChatGPT',
+        gemini: 'Gemini',
+        grok: 'Grok'
+      };
+
+      const DEFAULT_AGENT_CONFIG = {
+        provider: 'ollama',
+        agent: 'ideas',
+        language: 'typescript',
+        model: 'llama3.1',
+        baseUrl: 'http://localhost:11434',
+        apiKey: '',
+        temperature: 0.4
+      };
+
       const state = {
         config: null,
         workspace: [],
@@ -622,7 +797,8 @@
         suggestions: [],
         selectedSuggestionIndex: 0,
         expandedDirectories: new Set(),
-        pendingPatch: ''
+        pendingPatch: '',
+        agentConfig: { ...DEFAULT_AGENT_CONFIG }
       };
 
       function detectLanguageFromPath(filePath) {
@@ -709,6 +885,183 @@
         editorCompletions.classList.add('visible');
       }
 
+      function getStoredAgentConfig() {
+        try {
+          const raw = window.localStorage.getItem('nexio-agent-config');
+          if (!raw) {
+            return { ...DEFAULT_AGENT_CONFIG };
+          }
+          return { ...DEFAULT_AGENT_CONFIG, ...JSON.parse(raw) };
+        } catch (error) {
+          console.warn('Unable to load local agent config', error);
+          return { ...DEFAULT_AGENT_CONFIG };
+        }
+      }
+
+      function persistAgentConfig() {
+        window.localStorage.setItem('nexio-agent-config', JSON.stringify(state.agentConfig));
+      }
+
+      function renderConfigForm() {
+        const form = document.getElementById('config-form');
+        if (!form) {
+          return;
+        }
+
+        const providerOptions = [
+          { value: 'ollama', label: 'Ollama' },
+          { value: 'openai', label: 'ChatGPT' },
+          { value: 'gemini', label: 'Gemini' },
+          { value: 'grok', label: 'Grok' }
+        ];
+
+        const agentOptions = [
+          { value: 'ideas', label: 'Agente de ideas' },
+          { value: 'planning', label: 'Agente de planificación' },
+          { value: 'principal', label: 'Agente principal' },
+          { value: 'orchestrator', label: 'Orquestador' }
+        ];
+
+        const languageOptions = [
+          { value: 'typescript', label: 'TypeScript' },
+          { value: 'javascript', label: 'JavaScript' },
+          { value: 'python', label: 'Python' },
+          { value: 'markdown', label: 'Markdown' }
+        ];
+
+        const dynamicFields = {
+          ollama: [
+            { key: 'model', label: 'Modelo', type: 'text', placeholder: 'llama3.1' },
+            { key: 'baseUrl', label: 'URL base', type: 'text', placeholder: 'http://localhost:11434' }
+          ],
+          openai: [
+            { key: 'model', label: 'Modelo', type: 'text', placeholder: 'gpt-4o-mini' },
+            { key: 'apiKey', label: 'API Key', type: 'password', placeholder: 'sk-...' },
+            { key: 'baseUrl', label: 'URL base', type: 'text', placeholder: 'https://api.openai.com/v1' }
+          ],
+          gemini: [
+            { key: 'model', label: 'Modelo', type: 'text', placeholder: 'gemini-2.0-flash' },
+            { key: 'apiKey', label: 'API Key', type: 'password', placeholder: 'AIza...' },
+            { key: 'baseUrl', label: 'URL base', type: 'text', placeholder: 'https://generativelanguage.googleapis.com' }
+          ],
+          grok: [
+            { key: 'model', label: 'Modelo', type: 'text', placeholder: 'grok-2-latest' },
+            { key: 'apiKey', label: 'API Key', type: 'password', placeholder: 'xai-...' },
+            { key: 'baseUrl', label: 'URL base', type: 'text', placeholder: 'https://api.x.ai/v1' }
+          ]
+        };
+
+        const providerFields = dynamicFields[state.agentConfig.provider] ?? dynamicFields.ollama;
+
+        form.innerHTML = `
+          <div class="field-grid">
+            <div class="field-row">
+              <label for="config-provider">Proveedor</label>
+              <select id="config-provider" name="provider">
+                ${providerOptions.map((option) => `<option value="${option.value}" ${state.agentConfig.provider === option.value ? 'selected' : ''}>${option.label}</option>`).join('')}
+              </select>
+            </div>
+            <div class="field-row">
+              <label for="config-agent">Agente</label>
+              <select id="config-agent" name="agent">
+                ${agentOptions.map((option) => `<option value="${option.value}" ${state.agentConfig.agent === option.value ? 'selected' : ''}>${option.label}</option>`).join('')}
+              </select>
+            </div>
+            <div class="field-row">
+              <label for="config-language">Idioma / lenguaje</label>
+              <select id="config-language" name="language">
+                ${languageOptions.map((option) => `<option value="${option.value}" ${state.agentConfig.language === option.value ? 'selected' : ''}>${option.label}</option>`).join('')}
+              </select>
+            </div>
+            <div class="field-row">
+              <label for="config-temperature">Temperatura</label>
+              <input id="config-temperature" name="temperature" type="number" min="0" max="1" step="0.1" value="${state.agentConfig.temperature}" />
+            </div>
+          </div>
+          <div class="field-grid">
+            ${providerFields.map((field) => `
+              <div class="field-row">
+                <label for="config-${field.key}">${field.label}</label>
+                <input
+                  id="config-${field.key}"
+                  name="${field.key}"
+                  type="${field.type}"
+                  value="${state.agentConfig[field.key] ?? ''}"
+                  placeholder="${field.placeholder ?? ''}"
+                />
+              </div>
+            `).join('')}
+          </div>
+        `;
+
+        const providerSelect = document.getElementById('config-provider');
+        providerSelect?.addEventListener('change', (event) => {
+          state.agentConfig.provider = event.target.value;
+          renderConfigForm();
+        });
+
+        document.getElementById('config-agent')?.addEventListener('change', (event) => {
+          state.agentConfig.agent = event.target.value;
+        });
+
+        document.getElementById('config-language')?.addEventListener('change', (event) => {
+          state.agentConfig.language = event.target.value;
+        });
+
+        document.getElementById('config-temperature')?.addEventListener('input', (event) => {
+          const nextValue = Number(event.target.value);
+          if (!Number.isNaN(nextValue)) {
+            state.agentConfig.temperature = nextValue;
+          }
+        });
+
+        providerFields.forEach((field) => {
+          const input = document.getElementById(`config-${field.key}`);
+          input?.addEventListener('input', (event) => {
+            state.agentConfig[field.key] = event.target.value;
+          });
+        });
+      }
+
+      function openConfiguration() {
+        state.agentConfig = getStoredAgentConfig();
+        renderConfigForm();
+        const modal = document.getElementById('config-modal');
+        if (modal) {
+          modal.classList.remove('hidden');
+          modal.setAttribute('aria-hidden', 'false');
+        }
+      }
+
+      function closeConfiguration() {
+        const modal = document.getElementById('config-modal');
+        if (modal) {
+          modal.classList.add('hidden');
+          modal.setAttribute('aria-hidden', 'true');
+        }
+      }
+
+      async function saveConfiguration() {
+        persistAgentConfig();
+        const providerLabel = PROVIDER_LABELS[state.agentConfig.provider] ?? 'Proveedor';
+        try {
+          await window.electronAPI.setAgentConfig({
+            provider: state.agentConfig.provider,
+            agent: state.agentConfig.agent,
+            language: state.agentConfig.language,
+            model: state.agentConfig.model,
+            baseUrl: state.agentConfig.baseUrl,
+            apiKey: state.agentConfig.apiKey,
+            temperature: Number(state.agentConfig.temperature ?? 0.4)
+          });
+        } catch (error) {
+          console.warn('Agent config was not persisted to Electron runtime', error);
+        }
+        setStatus(`Proveedor activo: ${providerLabel}`);
+        chatLog.textContent = `Configuración guardada: ${providerLabel} · Agente ${state.agentConfig.agent} · Lenguaje ${state.agentConfig.language}.`;
+        closeConfiguration();
+      }
+
       function setStatus(message) {
         statusText.textContent = message;
       }
@@ -723,7 +1076,15 @@
 
         try {
           const taskPrompt = customPrompt || (state.activeFile ? `Quiero ayuda para continuar en ${state.activeFile}` : 'Quiero sugerencias de autocompletado y ejemplos de código para el editor');
-          const result = await window.electronAPI.runAgentWorkflow(taskTitle, state.activeFile);
+          const result = await window.electronAPI.runAgentWorkflow(taskTitle, state.activeFile, {
+            provider: state.agentConfig.provider,
+            agent: state.agentConfig.agent,
+            language: state.agentConfig.language,
+            model: state.agentConfig.model,
+            baseUrl: state.agentConfig.baseUrl,
+            apiKey: state.agentConfig.apiKey,
+            temperature: Number(state.agentConfig.temperature ?? 0.4)
+          });
           if (!result || !result.ok) {
             chatLog.textContent = result?.message || 'The workflow could not complete.';
             return;
@@ -955,6 +1316,74 @@
         await openFile(selected);
       }
 
+      async function createNewFile() {
+        const workspaceRoot = state.config?.workspaceRoot || null;
+        if (!workspaceRoot) {
+          setStatus('Selecciona un workspace antes de crear un archivo');
+          await switchWorkspace();
+          return;
+        }
+
+        const fileName = window.prompt('Nombre del archivo nuevo', 'nuevo-archivo.txt');
+        if (!fileName) {
+          return;
+        }
+
+        const cleanName = fileName.trim();
+        if (!cleanName) {
+          return;
+        }
+
+        const relativePath = cleanName.replace(/\\/g, '/').replace(/^\/+/, '');
+        try {
+          await window.electronAPI.writeFile(relativePath, '');
+          await openFile(relativePath, true);
+          setStatus(`Archivo creado: ${relativePath}`);
+        } catch (error) {
+          console.error(error);
+          setStatus('No se pudo crear el archivo');
+        }
+      }
+
+      async function closeCurrentWorkspace() {
+        const hasDirtyTabs = state.tabs.some((tab) => tab.dirty);
+        if (hasDirtyTabs && !window.confirm('Hay archivos con cambios sin guardar. ¿Cerrar workspace?')) {
+          return;
+        }
+
+        state.tabs = [];
+        state.activeFile = null;
+        editor.value = '';
+        state.workspace = [];
+        state.expandedDirectories.clear();
+        renderTree(state.workspace);
+        renderTabs();
+        updateActiveFileLabel();
+        setStatus('Workspace cerrado');
+        chatLog.textContent = 'Workspace cerrado. Abre una carpeta para continuar.';
+      }
+
+      function closeFileMenu() {
+        const menu = document.getElementById('files-menu');
+        const button = document.getElementById('menu-files');
+        if (!menu || !button) {
+          return;
+        }
+        menu.classList.remove('visible');
+        button.setAttribute('aria-expanded', 'false');
+      }
+
+      function toggleFileMenu() {
+        const menu = document.getElementById('files-menu');
+        const button = document.getElementById('menu-files');
+        if (!menu || !button) {
+          return;
+        }
+        const shouldOpen = !menu.classList.contains('visible');
+        menu.classList.toggle('visible', shouldOpen);
+        button.setAttribute('aria-expanded', String(shouldOpen));
+      }
+
       async function switchWorkspace() {
         const hasDirtyTabs = state.tabs.some((tab) => tab.dirty);
         if (hasDirtyTabs && !window.confirm('Hay archivos con cambios sin guardar. ¿Cambiar de workspace?')) {
@@ -1091,6 +1520,7 @@
       }
 
       async function bootstrap() {
+        state.agentConfig = getStoredAgentConfig();
         const config = await window.electronAPI.getConfig();
         state.config = config;
 
@@ -1207,16 +1637,62 @@
         }
       });
 
-      document.getElementById('menu-open-file').addEventListener('click', async () => {
-        await openFileFromDialog();
+      document.getElementById('menu-files').addEventListener('click', (event) => {
+        event.stopPropagation();
+        toggleFileMenu();
+      });
+
+      document.getElementById('config-close').addEventListener('click', () => {
+        closeConfiguration();
+      });
+
+      document.getElementById('config-cancel').addEventListener('click', () => {
+        closeConfiguration();
+      });
+
+      document.getElementById('config-save').addEventListener('click', () => {
+        saveConfiguration();
       });
 
       document.getElementById('menu-open-workspace').addEventListener('click', async () => {
         await switchWorkspace();
       });
 
-      document.getElementById('menu-save').addEventListener('click', async () => {
-        await saveCurrentFile();
+      document.querySelectorAll('.menu-item').forEach((button) => {
+        button.addEventListener('click', async () => {
+          const action = button.dataset.menuAction;
+          closeFileMenu();
+
+          if (action === 'open-file') {
+            await openFileFromDialog();
+          } else if (action === 'close-file') {
+            if (state.activeFile) {
+              await closeTab(state.activeFile);
+            }
+          } else if (action === 'save-file') {
+            await saveCurrentFile();
+          } else if (action === 'new-file') {
+            await createNewFile();
+          } else if (action === 'open-workspace') {
+            await switchWorkspace();
+          } else if (action === 'close-workspace') {
+            await closeCurrentWorkspace();
+          } else if (action === 'config') {
+            openConfiguration();
+          }
+        });
+      });
+
+      document.addEventListener('click', (event) => {
+        if (!event.target.closest('.menu-shell') && !event.target.closest('.menu-item')) {
+          closeFileMenu();
+        }
+      });
+
+      document.getElementById('config-modal')?.addEventListener('click', (event) => {
+        if (event.target === event.currentTarget) {
+          closeConfiguration();
+        }
       });
 
       document.getElementById('open-file-btn').addEventListener('click', async () => {

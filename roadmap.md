@@ -46,6 +46,7 @@ Todo dentro de un **sandbox seguro** y con control humano para aprobar diffs.
 - Plugins iniciales: refactor, testing, docs.
 - Mecanismo para instanciar múltiples agentes de un plugin.
 - Hito actual: plugin manager y registro central de plugins.
+- Hito adicional: configuración del provider seleccionado en el runtime y conectores reales para Gemini/Grok, con fallback local y registro de plugins disponibles por el orquestador.
 - Estado: implementado y validado con tests.
 
 ### Fase 4 Ejecución y Validación (hito actual)

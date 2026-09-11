@@ -5,12 +5,13 @@
 import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import path from 'node:path';
 
-import { createAppConfig } from '../backend/config';
+import { createAppConfig, defaultAgentRuntimeSettings, type AgentRuntimeSettings } from '../backend/config';
 import { createProjectSnapshot } from '../backend/project-snapshot';
 import { WorkflowRuntime } from '../backend/workflow-runtime';
 import { listWorkspace, readWorkspaceFile, writeWorkspaceFile } from '../backend/workspace-service';
 
 let workspaceRoot = process.env.NEXIO_WORKSPACE_ROOT ?? process.cwd();
+let agentRuntimeSettings: AgentRuntimeSettings = { ...defaultAgentRuntimeSettings };
 
 function setWorkspaceRoot(nextRoot: string): string {
   workspaceRoot = path.resolve(nextRoot);
@@ -41,11 +42,25 @@ function createWindow(): void {
 app.whenReady().then(() => {
   ipcMain.handle('app:get-config', () => ({
     environment: 'development',
-    agents: ['ideas', 'planning', 'principal'],
-    llmProviders: ['openai', 'ollama', 'local'],
+    agents: ['ideas', 'planning', 'principal', 'orchestrator'],
+    llmProviders: ['ollama', 'openai', 'gemini', 'grok', 'local'],
     workspaceRoot,
+    agentRuntime: { ...agentRuntimeSettings },
     sandbox: createAppConfig(workspaceRoot).sandbox
   }));
+
+  ipcMain.handle('app:get-agent-config', () => ({ ...agentRuntimeSettings }));
+
+  ipcMain.handle('app:set-agent-config', (_event, nextConfig: Partial<AgentRuntimeSettings>) => {
+    agentRuntimeSettings = {
+      ...agentRuntimeSettings,
+      ...nextConfig,
+      provider: nextConfig.provider ?? agentRuntimeSettings.provider,
+      agent: nextConfig.agent ?? agentRuntimeSettings.agent,
+      language: nextConfig.language ?? agentRuntimeSettings.language
+    };
+    return { ...agentRuntimeSettings };
+  });
 
   ipcMain.handle('workspace:list', () => listWorkspace(workspaceRoot));
 
@@ -97,9 +112,12 @@ app.whenReady().then(() => {
     return true;
   });
 
-  ipcMain.handle('agent:run-workflow', async (_event, taskTitle?: string, targetFile?: string | null) => {
+  ipcMain.handle('agent:run-workflow', async (_event, taskTitle?: string, targetFile?: string | null, runtimeConfig?: Partial<AgentRuntimeSettings>) => {
     const snapshot = createProjectSnapshot(workspaceRoot);
-    const runtime = new WorkflowRuntime();
+    const runtime = new WorkflowRuntime({
+      ...agentRuntimeSettings,
+      ...(runtimeConfig ?? {})
+    });
     const task = {
       id: `task-${Date.now()}`,
       title: taskTitle || 'Review current workspace',
