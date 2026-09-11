@@ -72,3 +72,7 @@ Before the final product version, the project will move through a QA and validat
 
 The testing strategy is documented in [testing_plan.md](testing_plan.md), and the operational QA gate is tracked in [qa_checklist.md](qa_checklist.md).
 
+## Release candidate status
+
+This branch represents the release-candidate state of Nexio IDE for production readiness review. It includes the validated agent workflow, the approval/rejection UX, the hardening of the sandbox, and the testing evidence required for internal QA.
+
