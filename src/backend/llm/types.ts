@@ -1,7 +1,7 @@
 /**
  * LLM connector contracts.
  */
-export type LlmProvider = 'openai' | 'ollama' | 'local';
+export type LlmProvider = 'openai' | 'ollama' | 'gemini' | 'grok' | 'local';
 
 export interface LlmRequest {
   prompt: string;
@@ -17,6 +17,10 @@ export interface LlmRuntimeConfig {
   openaiApiKey?: string;
   openaiBaseUrl: string;
   ollamaBaseUrl: string;
+  geminiApiKey?: string;
+  geminiBaseUrl: string;
+  grokApiKey?: string;
+  grokBaseUrl: string;
   timeoutMs: number;
 }
 

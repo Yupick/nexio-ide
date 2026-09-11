@@ -1,6 +1,8 @@
 /**
  * LLM manager with provider fallback and metadata correlation.
  */
+import { GeminiConnector } from './gemini-connector';
+import { GrokConnector } from './grok-connector';
 import { LocalConnector } from './local-connector';
 import { OllamaConnector } from './ollama-connector';
 import { OpenAIConnector } from './openai-connector';
@@ -20,12 +22,14 @@ export class LlmManager {
   private readonly connectors: Record<string, LlmConnector> = {
     openai: new OpenAIConnector(),
     ollama: new OllamaConnector(),
+    gemini: new GeminiConnector(),
+    grok: new GrokConnector(),
     local: new LocalConnector()
   };
 
   public async completeWithFallback(
     request: LlmRequestWithMetadata,
-    providers: string[] = ['openai', 'ollama', 'local']
+    providers: string[] = ['ollama', 'openai', 'gemini', 'grok', 'local']
   ): Promise<LlmResponse> {
     for (const provider of providers) {
       const connector = this.connectors[provider];
