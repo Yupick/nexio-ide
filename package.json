@@ -5,7 +5,8 @@
   "description": "Editor IA multiplataforma con agentes, plugins y sandbox local.",
   "main": "dist/electron/main.js",
   "scripts": {
-    "dev": "tsx src/electron/main.ts",
+    "dev": "npm run build && electron .",
+    "start": "electron .",
     "build": "tsc -p tsconfig.json",
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --write .",
