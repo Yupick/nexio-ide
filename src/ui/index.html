@@ -146,15 +146,46 @@
 
       .center-header {
         display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 1rem;
+        flex-direction: column;
+        gap: 0.7rem;
         padding: 0.9rem 1rem 0.6rem;
         border-bottom: 1px solid var(--border);
       }
 
+      .window-header-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+
       .window-title {
         font-weight: 700;
+      }
+
+      .active-file-label {
+        color: var(--muted);
+        font-size: 0.8rem;
+        font-weight: 600;
+        max-width: 220px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .desktop-menu {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+
+      .menu-btn {
+        background: rgba(148, 163, 184, 0.08);
+        color: var(--text);
+        border: 1px solid var(--border);
+        padding: 0.45rem 0.75rem;
+        font-size: 0.8rem;
       }
 
       .tab-row {
@@ -166,21 +197,45 @@
       }
 
       .tab {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
         background: rgba(148, 163, 184, 0.08);
         border: 1px solid var(--border);
         border-radius: 0.7rem 0.7rem 0 0;
-        padding: 0.4rem 0.8rem;
+        padding: 0.4rem 0.7rem;
         color: var(--muted);
         cursor: pointer;
         max-width: 180px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
       }
 
       .tab.active {
         background: rgba(11, 95, 255, 0.12);
         border-color: rgba(96, 165, 250, 0.45);
+        color: var(--text);
+      }
+
+      .tab-label {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .tab-close {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.1rem;
+        height: 1.1rem;
+        border-radius: 50%;
+        background: transparent;
+        color: var(--muted);
+        font-size: 0.8rem;
+        line-height: 1;
+      }
+
+      .tab-close:hover {
+        background: rgba(148, 163, 184, 0.14);
         color: var(--text);
       }
 
@@ -208,6 +263,54 @@
         color: var(--text);
       }
 
+      .editor-completions {
+        display: none;
+        margin-top: 0.75rem;
+        padding: 0.65rem 0.8rem;
+        border: 1px solid var(--border);
+        border-radius: 0.85rem;
+        background: rgba(15, 23, 42, 0.9);
+      }
+
+      .editor-completions.visible {
+        display: block;
+      }
+
+      .editor-completions-label {
+        font-size: 0.72rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 0.5rem;
+      }
+
+      .completion-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      .completion-item {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        max-width: 100%;
+        background: rgba(148, 163, 184, 0.08);
+        border: 1px solid var(--border);
+        color: var(--text);
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.65rem;
+        font-size: 0.78rem;
+        text-align: left;
+        cursor: pointer;
+      }
+
+      .completion-item:hover,
+      .completion-item.selected {
+        background: rgba(11, 95, 255, 0.12);
+        border-color: rgba(96, 165, 250, 0.45);
+      }
+
       .status-bar {
         display: flex;
         align-items: center;
@@ -216,6 +319,30 @@
         padding: 0.75rem 1rem 1rem;
         border-top: 1px solid var(--border);
         color: var(--muted);
+      }
+
+      .shortcut-hints {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        color: var(--muted);
+        font-size: 0.72rem;
+      }
+
+      .shortcut-key {
+        border: 1px solid var(--border);
+        background: rgba(148, 163, 184, 0.08);
+        border-radius: 0.45rem;
+        padding: 0.15rem 0.35rem;
+        color: var(--text);
+      }
+
+      .toolbar-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
       }
 
       .status-pill {
@@ -259,6 +386,29 @@
       .panel-block h3 {
         margin: 0 0 0.75rem;
         font-size: 1rem;
+      }
+
+      .prompt-bar {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 0.8rem;
+      }
+
+      .prompt-input {
+        flex: 1;
+        background: rgba(15, 23, 42, 0.9);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 0.7rem;
+        padding: 0.6rem 0.75rem;
+        font-size: 0.82rem;
+      }
+
+      .prompt-button {
+        background: var(--accent);
+        color: white;
+        padding: 0.6rem 0.8rem;
+        border-radius: 0.7rem;
       }
 
       .mode-switch {
@@ -363,12 +513,32 @@
 
       <main class="center">
         <div class="center-header">
-          <div class="window-title">Desktop editor</div>
+          <div class="window-header-row">
+            <div class="window-title">Desktop editor</div>
+            <div class="active-file-label" id="active-file-label">No file selected</div>
+            <div class="desktop-menu">
+              <button class="menu-btn" id="menu-open-file" type="button">File</button>
+              <button class="menu-btn" id="menu-open-workspace" type="button">Workspace</button>
+              <button class="menu-btn" id="menu-save" type="button">Save</button>
+            </div>
+          </div>
+          <div class="shortcut-hints" aria-label="keyboard shortcuts">
+            <span>Shortcuts:</span>
+            <span class="shortcut-key">Ctrl+O</span>
+            <span class="shortcut-key">Ctrl+W</span>
+            <span class="shortcut-key">Ctrl+X</span>
+            <span class="shortcut-key">Ctrl+A</span>
+          </div>
           <div class="tab-row" id="tab-row"></div>
         </div>
 
         <div class="editor-surface">
           <textarea id="editor" spellcheck="false" aria-label="Code editor"></textarea>
+
+          <div id="editor-completions" class="editor-completions" aria-live="polite">
+            <div class="editor-completions-label">Autocomplete</div>
+            <div id="completion-list" class="completion-list"></div>
+          </div>
         </div>
 
         <div class="status-bar">
@@ -376,7 +546,11 @@
             <span class="status-indicator"></span>
             <span id="status-text">Ready</span>
           </div>
-          <button class="primary-btn" id="save-btn" type="button">Save</button>
+          <div class="toolbar-actions">
+            <button class="ghost-btn" id="open-file-btn" type="button">Open file</button>
+            <button class="ghost-btn" id="open-workspace-btn" type="button">Open workspace</button>
+            <button class="primary-btn" id="save-btn" type="button">Save</button>
+          </div>
         </div>
       </main>
 
@@ -384,6 +558,10 @@
         <div class="panel-block">
           <span class="badge">AI Console</span>
           <h3>Agent workflow</h3>
+          <div class="prompt-bar">
+            <input id="prompt-input" class="prompt-input" type="text" placeholder="Ej: crea una función de saludo" aria-label="AI prompt" />
+            <button id="prompt-submit" class="prompt-button" type="button">Ask</button>
+          </div>
           <div class="mode-switch">
             <button class="mode-btn active" data-mode="ideas" type="button">Ideas</button>
             <button class="mode-btn" data-mode="execution" type="button">Execution</button>
@@ -424,22 +602,215 @@
     <script>
       const editor = document.getElementById('editor');
       const statusText = document.getElementById('status-text');
+      const activeFileLabel = document.getElementById('active-file-label');
       const workspaceTree = document.getElementById('workspace-tree');
       const tabRow = document.getElementById('tab-row');
       const chatLog = document.getElementById('chat-log');
       const diffBox = document.getElementById('diff-box');
       const approvalStatus = document.getElementById('approval-status');
+      const editorCompletions = document.getElementById('editor-completions');
+      const completionList = document.getElementById('completion-list');
+      const promptInput = document.getElementById('prompt-input');
+      const promptSubmit = document.getElementById('prompt-submit');
 
       const state = {
         config: null,
         workspace: [],
         tabs: [],
         activeFile: null,
-        mode: 'ideas'
+        mode: 'ideas',
+        suggestions: [],
+        selectedSuggestionIndex: 0,
+        expandedDirectories: new Set(),
+        pendingPatch: ''
       };
+
+      function detectLanguageFromPath(filePath) {
+        if (!filePath) {
+          return 'typescript';
+        }
+        const ext = filePath.split('.').pop()?.toLowerCase();
+        if (ext === 'py') return 'python';
+        if (ext === 'md') return 'markdown';
+        if (ext === 'json') return 'json';
+        if (ext === 'ts' || ext === 'tsx') return 'typescript';
+        if (ext === 'js' || ext === 'jsx') return 'javascript';
+        return 'typescript';
+      }
+
+      function buildLocalSuggestions(content, filePath) {
+        const language = detectLanguageFromPath(filePath);
+        const trimmed = (content || '').trim();
+        const generic = [
+          { label: 'function helper() { ... }', text: 'function helper() {\n  return "example";\n}' },
+          { label: 'const value = ...', text: 'const value = "example";' },
+          { label: 'if (condition) { ... }', text: 'if (condition) {\n  // TODO\n}' }
+        ];
+
+        if (!trimmed) {
+          return generic;
+        }
+
+        if (language === 'python') {
+          return [
+            { label: 'def greet(name): ...', text: 'def greet(name: str) -> str:\n    return f"Hola, {name}!"' },
+            { label: 'for item in items: ...', text: 'for item in items:\n    print(item)' },
+            { label: 'return value.strip()', text: 'return value.strip().lower()' }
+          ];
+        }
+
+        if (trimmed.includes('function') || trimmed.includes('const ') || trimmed.includes('let ') || trimmed.includes('return ')) {
+          return [
+            { label: 'function greet(name) { ... }', text: 'function greet(name: string): string {\n  return `Hola, ${name}!`;\n}' },
+            { label: 'const handleClick = () => ...', text: 'const handleClick = () => {\n  // TODO\n};' },
+            { label: 'return value;', text: 'return value;' }
+          ];
+        }
+
+        return generic;
+      }
+
+      function applySuggestionAtSelection(suggestion) {
+        const cursor = editor.selectionStart ?? editor.value.length;
+        const insertion = suggestion.text || suggestion.label || '';
+        const before = editor.value.slice(0, cursor);
+        const after = editor.value.slice(cursor);
+        editor.value = `${before}${insertion}${after}`;
+        const nextCursor = cursor + insertion.length;
+        editor.focus();
+        editor.selectionStart = nextCursor;
+        editor.selectionEnd = nextCursor;
+        editorCompletions.classList.remove('visible');
+        state.suggestions = [];
+        state.selectedSuggestionIndex = 0;
+        setStatus('Suggestion inserted');
+      }
+
+      function renderCompletionSuggestions() {
+        completionList.innerHTML = '';
+        if (!state.suggestions.length) {
+          editorCompletions.classList.remove('visible');
+          return;
+        }
+
+        const visibleSuggestions = state.suggestions.slice(0, 4);
+        state.selectedSuggestionIndex = Math.min(state.selectedSuggestionIndex, visibleSuggestions.length - 1);
+
+        visibleSuggestions.forEach((suggestion, index) => {
+          const suggestionButton = document.createElement('button');
+          suggestionButton.type = 'button';
+          suggestionButton.className = `completion-item${index === state.selectedSuggestionIndex ? ' selected' : ''}`;
+          suggestionButton.textContent = suggestion.label || suggestion.text || 'Insert suggestion';
+          suggestionButton.title = suggestion.text || suggestion.label || 'Insert suggestion';
+          suggestionButton.addEventListener('click', () => applySuggestionAtSelection(suggestion));
+          completionList.appendChild(suggestionButton);
+        });
+
+        editorCompletions.classList.add('visible');
+      }
 
       function setStatus(message) {
         statusText.textContent = message;
+      }
+
+      async function triggerAgentWorkflow(customPrompt = null) {
+        const taskTitle = state.activeFile
+          ? `Review active file: ${state.activeFile}`
+          : 'Review workspace architecture';
+
+        setStatus('Running agent workflow...');
+        chatLog.textContent = `Generating ideas and roadmap for ${taskTitle}...`;
+
+        try {
+          const taskPrompt = customPrompt || (state.activeFile ? `Quiero ayuda para continuar en ${state.activeFile}` : 'Quiero sugerencias de autocompletado y ejemplos de código para el editor');
+          const result = await window.electronAPI.runAgentWorkflow(taskTitle, state.activeFile);
+          if (!result || !result.ok) {
+            chatLog.textContent = result?.message || 'The workflow could not complete.';
+            return;
+          }
+
+          const ideaSuggestions = result.data?.ideaResult?.data?.suggestions ?? [];
+          const autocompleteExamples = result.data?.ideaResult?.data?.autocompleteExamples ?? [];
+          const roadmapTasks = result.data?.planResult?.data?.roadmap?.tasks ?? [];
+          const principalMessage = result.data?.principalResult?.message ?? 'Execution ready for review.';
+
+          const generatedSuggestions = autocompleteExamples.length > 0
+            ? autocompleteExamples.map((example) => ({
+                label: example.split('\n')[0].slice(0, 38),
+                text: example
+              }))
+            : buildLocalSuggestions(editor.value, state.activeFile);
+
+          state.suggestions = generatedSuggestions;
+          state.pendingPatch = generatedSuggestions[0]?.text || taskPreview || principalMessage;
+          renderCompletionSuggestions();
+
+          if (state.mode === 'ideas') {
+            const suggestionsText = ideaSuggestions.length > 0
+              ? ideaSuggestions.map((entry) => `• ${entry}`).join('\n')
+              : `Ideas mode complete. ${result.message}`;
+            const examplesText = autocompleteExamples.length > 0
+              ? `\n\nAutocomplete examples:\n${autocompleteExamples.map((entry) => `  - ${entry.split('\n')[0]}`).join('\n')}`
+              : '';
+            chatLog.textContent = `${suggestionsText}${examplesText}`;
+          } else {
+            chatLog.textContent = principalMessage;
+          }
+
+          const taskPreview = roadmapTasks.length > 0
+            ? roadmapTasks.map((task) => `- ${task.title}: ${task.description}`).join('\n')
+            : 'No roadmap tasks produced yet.';
+
+          const examplePreview = autocompleteExamples.length > 0
+            ? `\n\nExample output:\n${autocompleteExamples[0]}`
+            : '';
+
+          state.pendingPatch = (autocompleteExamples[0] || taskPreview || principalMessage || 'No patch generated.');
+          diffBox.textContent = `${taskPreview}${examplePreview}`;
+          approvalStatus.textContent = result.data?.approvalStatus ?? 'Awaiting review';
+          approvalStatus.style.color = '#e2e8f0';
+          diffBox.style.borderColor = 'rgba(148, 163, 184, 0.2)';
+          setStatus('Workflow completed');
+
+          if (customPrompt) {
+            const trimmed = customPrompt.trim();
+            if (trimmed) {
+              chatLog.textContent = `${chatLog.textContent}\n\nPrompt: ${trimmed}`;
+            }
+          }
+        } catch (error) {
+          console.error(error);
+          chatLog.textContent = 'The AI workflow failed while invoking the desktop runtime.';
+          setStatus('Workflow failed');
+        }
+      }
+
+      function updateActiveFileLabel() {
+        activeFileLabel.textContent = state.activeFile ? state.activeFile : 'No file selected';
+      }
+
+      function getActiveTab() {
+        return state.tabs.find((tab) => tab.path === state.activeFile) ?? null;
+      }
+
+      function updateDirtyState() {
+        const activeTab = getActiveTab();
+        if (!activeTab) {
+          return;
+        }
+
+        const dirty = editor.value !== activeTab.originalContent;
+        activeTab.dirty = dirty;
+        renderTabs();
+      }
+
+      function toggleDirectory(nodePath) {
+        if (state.expandedDirectories.has(nodePath)) {
+          state.expandedDirectories.delete(nodePath);
+        } else {
+          state.expandedDirectories.add(nodePath);
+        }
+        renderTree(state.workspace);
       }
 
       function renderTree(nodes, depth = 0) {
@@ -451,20 +822,32 @@
           item.dataset.path = node.path;
           const typeMark = document.createElement('span');
           typeMark.className = 'type-mark';
-          typeMark.textContent = node.type === 'directory' ? '▾' : '•';
+          typeMark.textContent = node.type === 'directory' ? (state.expandedDirectories.has(node.path) ? '▾' : '▸') : '•';
           const name = document.createElement('span');
           name.textContent = node.name;
           item.append(typeMark, name);
 
-          item.addEventListener('click', async () => {
-            if (node.type === 'file') {
-              await openFile(node.path);
+          item.addEventListener('click', async (event) => {
+            event.stopPropagation();
+            if (node.type === 'directory') {
+              toggleDirectory(node.path);
+              return;
             }
+            await openFile(node.path);
+          });
+
+          item.addEventListener('dblclick', async (event) => {
+            event.stopPropagation();
+            if (node.type === 'directory') {
+              toggleDirectory(node.path);
+              return;
+            }
+            await openFile(node.path);
           });
 
           workspaceTree.appendChild(item);
 
-          if (node.children && node.children.length > 0) {
+          if (node.type === 'directory' && node.children && node.children.length > 0 && state.expandedDirectories.has(node.path)) {
             const children = document.createElement('div');
             children.style.marginLeft = '0.8rem';
             node.children.forEach((child) => {
@@ -473,16 +856,61 @@
               childNode.dataset.path = child.path;
               const mark = document.createElement('span');
               mark.className = 'type-mark';
-              mark.textContent = child.type === 'directory' ? '▾' : '•';
+              mark.textContent = child.type === 'directory' ? (state.expandedDirectories.has(child.path) ? '▾' : '▸') : '•';
               const label = document.createElement('span');
               label.textContent = child.name;
               childNode.append(mark, label);
-              childNode.addEventListener('click', async () => {
-                if (child.type === 'file') {
-                  await openFile(child.path);
+              childNode.addEventListener('click', async (event) => {
+                event.stopPropagation();
+                if (child.type === 'directory') {
+                  toggleDirectory(child.path);
+                  return;
                 }
+                await openFile(child.path);
+              });
+              childNode.addEventListener('dblclick', async (event) => {
+                event.stopPropagation();
+                if (child.type === 'directory') {
+                  toggleDirectory(child.path);
+                  return;
+                }
+                await openFile(child.path);
               });
               children.appendChild(childNode);
+
+              if (child.type === 'directory' && child.children && child.children.length > 0 && state.expandedDirectories.has(child.path)) {
+                const grandChildren = document.createElement('div');
+                grandChildren.style.marginLeft = '0.8rem';
+                child.children.forEach((grandChild) => {
+                  const grandNode = document.createElement('div');
+                  grandNode.className = `tree-node nested${state.activeFile === grandChild.path ? ' active' : ''}`;
+                  grandNode.dataset.path = grandChild.path;
+                  const grandMark = document.createElement('span');
+                  grandMark.className = 'type-mark';
+                  grandMark.textContent = grandChild.type === 'directory' ? (state.expandedDirectories.has(grandChild.path) ? '▾' : '▸') : '•';
+                  const grandLabel = document.createElement('span');
+                  grandLabel.textContent = grandChild.name;
+                  grandNode.append(grandMark, grandLabel);
+                  grandNode.addEventListener('click', async (event) => {
+                    event.stopPropagation();
+                    if (grandChild.type === 'directory') {
+                      toggleDirectory(grandChild.path);
+                      return;
+                    }
+                    await openFile(grandChild.path);
+                  });
+                  grandNode.addEventListener('dblclick', async (event) => {
+                    event.stopPropagation();
+                    if (grandChild.type === 'directory') {
+                      toggleDirectory(grandChild.path);
+                      return;
+                    }
+                    await openFile(grandChild.path);
+                  });
+                  grandChildren.appendChild(grandNode);
+                });
+                children.appendChild(grandChildren);
+              }
             });
             workspaceTree.appendChild(children);
           }
@@ -494,25 +922,107 @@
       function renderTabs() {
         tabRow.innerHTML = '';
         state.tabs.forEach((tab) => {
-          const btn = document.createElement('button');
-          btn.type = 'button';
-          btn.className = `tab${state.activeFile === tab.path ? ' active' : ''}`;
-          btn.textContent = tab.name;
-          btn.addEventListener('click', () => openFile(tab.path));
-          tabRow.appendChild(btn);
+          const tabBtn = document.createElement('button');
+          tabBtn.type = 'button';
+          tabBtn.className = `tab${state.activeFile === tab.path ? ' active' : ''}`;
+          tabBtn.title = `${tab.name}${tab.dirty ? ' • unsaved' : ' • saved'}`;
+
+          const label = document.createElement('span');
+          label.className = 'tab-label';
+          label.textContent = `${tab.name}${tab.dirty ? ' *' : ''}`;
+          label.addEventListener('click', () => openFile(tab.path));
+
+          const closeBtn = document.createElement('span');
+          closeBtn.className = 'tab-close';
+          closeBtn.textContent = '×';
+          closeBtn.title = 'Close tab';
+          closeBtn.addEventListener('click', async (event) => {
+            event.stopPropagation();
+            await closeTab(tab.path);
+          });
+
+          tabBtn.append(label, closeBtn);
+          tabRow.appendChild(tabBtn);
         });
       }
 
-      async function openFile(relativePath) {
+      async function openFileFromDialog() {
+        const selected = await window.electronAPI.selectFile();
+        if (!selected) {
+          return;
+        }
+
+        await openFile(selected);
+      }
+
+      async function switchWorkspace() {
+        const hasDirtyTabs = state.tabs.some((tab) => tab.dirty);
+        if (hasDirtyTabs && !window.confirm('Hay archivos con cambios sin guardar. ¿Cambiar de workspace?')) {
+          return;
+        }
+
+        const selectedRoot = await window.electronAPI.selectWorkspace();
+        if (!selectedRoot) {
+          return;
+        }
+
+        state.tabs = [];
+        state.activeFile = null;
+        editor.value = '';
+        state.config = await window.electronAPI.getConfig();
+        state.workspace = await window.electronAPI.listWorkspace();
+        renderTree(state.workspace);
+        renderTabs();
+        setStatus(`Workspace changed: ${selectedRoot}`);
+
+        const firstFile = findFirstFile(state.workspace);
+        if (firstFile) {
+          await openFile(firstFile, true);
+        }
+      }
+
+      async function confirmSaveBeforeLeaving() {
+        const activeTab = getActiveTab();
+        if (!activeTab || !activeTab.dirty) {
+          return true;
+        }
+
+        const shouldSave = window.confirm(`¿Guardar los cambios en ${activeTab.name}?`);
+        if (shouldSave) {
+          const saved = await saveCurrentFile();
+          return saved;
+        }
+
+        const discard = window.confirm(`Se perderán los cambios no guardados en ${activeTab.name}. ¿Continuar?`);
+        return discard;
+      }
+
+      async function openFile(relativePath, skipDirtyCheck = false) {
         if (!relativePath) return;
+
+        if (!skipDirtyCheck && state.activeFile) {
+          const canContinue = await confirmSaveBeforeLeaving();
+          if (!canContinue) {
+            return;
+          }
+        }
 
         try {
           const content = await window.electronAPI.readFile(relativePath);
           state.activeFile = relativePath;
-          if (!state.tabs.some((tab) => tab.path === relativePath)) {
-            state.tabs.push({ name: relativePath.split('/').pop(), path: relativePath });
+
+          let tab = state.tabs.find((item) => item.path === relativePath);
+          if (!tab) {
+            tab = { name: relativePath.split('/').pop(), path: relativePath, originalContent: content, dirty: false };
+            state.tabs.push(tab);
+          } else {
+            tab.originalContent = content;
+            tab.dirty = false;
           }
+
           editor.value = content;
+          editor.focus();
+          updateActiveFileLabel();
           setStatus(`Opened ${relativePath}`);
           renderTabs();
           renderTree(state.workspace);
@@ -526,15 +1036,57 @@
       async function saveCurrentFile() {
         if (!state.activeFile) {
           setStatus('No active file to save');
-          return;
+          return false;
         }
 
         try {
           await window.electronAPI.writeFile(state.activeFile, editor.value);
+          const activeTab = getActiveTab();
+          if (activeTab) {
+            activeTab.originalContent = editor.value;
+            activeTab.dirty = false;
+          }
           setStatus(`Saved ${state.activeFile}`);
+          updateActiveFileLabel();
+          renderTabs();
+          return true;
         } catch (error) {
           console.error(error);
           setStatus('Save failed');
+          return false;
+        }
+      }
+
+      async function closeTab(pathToClose) {
+        const tabIndex = state.tabs.findIndex((tab) => tab.path === pathToClose);
+        if (tabIndex === -1) {
+          return;
+        }
+
+        const tab = state.tabs[tabIndex];
+        if (state.activeFile === pathToClose && tab.dirty) {
+          const canProceed = await confirmSaveBeforeLeaving();
+          if (!canProceed) {
+            return;
+          }
+        }
+
+        state.tabs.splice(tabIndex, 1);
+
+        if (state.activeFile === pathToClose) {
+          const nextTab = state.tabs[tabIndex] ?? state.tabs[tabIndex - 1] ?? null;
+          if (nextTab) {
+            await openFile(nextTab.path, true);
+          } else {
+            state.activeFile = null;
+            editor.value = '';
+            updateActiveFileLabel();
+            setStatus('No file selected');
+            renderTabs();
+            renderTree(state.workspace);
+          }
+        } else {
+          renderTabs();
         }
       }
 
@@ -545,11 +1097,12 @@
         const workspace = await window.electronAPI.listWorkspace();
         state.workspace = workspace;
         renderTree(workspace);
+        updateActiveFileLabel();
         setStatus(`Workspace ready: ${config.workspaceRoot}`);
 
         const firstFile = findFirstFile(workspace);
         if (firstFile) {
-          await openFile(firstFile);
+          await openFile(firstFile, true);
         }
       }
 
@@ -568,26 +1121,173 @@
         return null;
       }
 
-      document.getElementById('save-btn').addEventListener('click', saveCurrentFile);
+      editor.addEventListener('input', async () => {
+        updateDirtyState();
+        const activeTab = getActiveTab();
+        if (activeTab && activeTab.dirty) {
+          setStatus(`Unsaved changes in ${activeTab.name}`);
+        }
+
+        const content = editor.value.trim();
+        if (content.length < 3) {
+          state.suggestions = [];
+          renderCompletionSuggestions();
+          return;
+        }
+
+        if (content.includes('function') || content.includes('const ') || content.includes('let ') || content.includes('return ')) {
+          await triggerAgentWorkflow(`Quiero sugerencias de autocompletado para el siguiente contexto: ${content.slice(-120)}`);
+        } else {
+          state.suggestions = [];
+          renderCompletionSuggestions();
+        }
+      });
+
+      editor.addEventListener('keydown', (event) => {
+        if (!state.suggestions.length) {
+          return;
+        }
+
+        const visibleSuggestions = state.suggestions.slice(0, 4);
+
+        if (event.key === 'Tab' || event.key === 'Enter') {
+          if (event.key === 'Tab') {
+            event.preventDefault();
+          }
+          const selected = visibleSuggestions[state.selectedSuggestionIndex] ?? visibleSuggestions[0];
+          if (selected) {
+            event.preventDefault();
+            applySuggestionAtSelection(selected);
+          }
+          return;
+        }
+
+        if (event.key === 'ArrowDown') {
+          event.preventDefault();
+          state.selectedSuggestionIndex = (state.selectedSuggestionIndex + 1) % visibleSuggestions.length;
+          renderCompletionSuggestions();
+        }
+
+        if (event.key === 'ArrowUp') {
+          event.preventDefault();
+          state.selectedSuggestionIndex = (state.selectedSuggestionIndex - 1 + visibleSuggestions.length) % visibleSuggestions.length;
+          renderCompletionSuggestions();
+        }
+      });
+
+      document.addEventListener('keydown', async (event) => {
+        if (!event.ctrlKey && !event.metaKey) {
+          return;
+        }
+
+        const key = event.key.toLowerCase();
+        if (key === 'x') {
+          event.preventDefault();
+          if (state.activeFile) {
+            await closeTab(state.activeFile);
+          }
+          return;
+        }
+
+        if (key === 'w') {
+          event.preventDefault();
+          await saveCurrentFile();
+          return;
+        }
+
+        if (key === 'o') {
+          event.preventDefault();
+          await openFileFromDialog();
+          return;
+        }
+
+        if (key === 'a') {
+          event.preventDefault();
+          await switchWorkspace();
+        }
+      });
+
+      document.getElementById('menu-open-file').addEventListener('click', async () => {
+        await openFileFromDialog();
+      });
+
+      document.getElementById('menu-open-workspace').addEventListener('click', async () => {
+        await switchWorkspace();
+      });
+
+      document.getElementById('menu-save').addEventListener('click', async () => {
+        await saveCurrentFile();
+      });
+
+      document.getElementById('open-file-btn').addEventListener('click', async () => {
+        await openFileFromDialog();
+      });
+
+      document.getElementById('open-workspace-btn').addEventListener('click', async () => {
+        await switchWorkspace();
+      });
+
+      document.getElementById('save-btn').addEventListener('click', async () => {
+        await saveCurrentFile();
+      });
       document.querySelector('.approve-btn').addEventListener('click', () => {
+        if (state.pendingPatch) {
+          const promptText = String(state.pendingPatch).trim();
+          if (promptText && editor.value) {
+            const cursor = editor.selectionStart ?? editor.value.length;
+            const before = editor.value.slice(0, cursor);
+            const after = editor.value.slice(cursor);
+            editor.value = `${before}${promptText}${after}`;
+            editor.focus();
+          }
+        }
+
         approvalStatus.textContent = 'Approved';
         approvalStatus.style.color = '#bbf7d0';
         diffBox.style.borderColor = 'rgba(34, 197, 94, 0.4)';
+        setStatus('Agent patch approved');
       });
 
       document.querySelector('.reject-btn').addEventListener('click', () => {
         approvalStatus.textContent = 'Request changes';
         approvalStatus.style.color = '#fecaca';
         diffBox.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+        setStatus('Agent patch rejected');
+      });
+
+      promptSubmit.addEventListener('click', async () => {
+        const promptValue = promptInput.value.trim();
+        if (!promptValue) {
+          return;
+        }
+        chatLog.textContent = `Prompt received: ${promptValue}`;
+        await triggerAgentWorkflow(promptValue);
+        promptInput.value = '';
+      });
+
+      promptInput.addEventListener('keydown', async (event) => {
+        if (event.key === 'Enter') {
+          const promptValue = promptInput.value.trim();
+          if (!promptValue) {
+            return;
+          }
+          chatLog.textContent = `Prompt received: ${promptValue}`;
+          await triggerAgentWorkflow(promptValue);
+          promptInput.value = '';
+        }
       });
 
       document.querySelectorAll('.mode-btn').forEach((button) => {
-        button.addEventListener('click', () => {
+        button.addEventListener('click', async () => {
           state.mode = button.dataset.mode;
           document.querySelectorAll('.mode-btn').forEach((item) => item.classList.toggle('active', item === button));
-          chatLog.textContent = state.mode === 'ideas'
-            ? 'Ideas mode ready. Select a workspace file and the agent will review the active context.'
-            : 'Execution mode active. The principal agent is ready to apply approved diffs.';
+          if (state.mode === 'ideas') {
+            chatLog.textContent = 'Ideas mode ready. The agent is reviewing the current workspace context.';
+          } else {
+            chatLog.textContent = 'Execution mode active. The principal agent is preparing the reviewable result.';
+          }
+
+          await triggerAgentWorkflow();
         });
       });
 

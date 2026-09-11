@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Editor IA multiplataforma con agentes, plugins y sandbox local.",
-  "main": "dist/electron/main.js",
+  "main": "dist/src/electron/main.js",
   "scripts": {
     "dev": "npm run build && electron .",
     "start": "electron .",
