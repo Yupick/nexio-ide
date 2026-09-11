@@ -2,6 +2,7 @@ import { IdeasAgent } from '../../src/agents/ideas-agent';
 import { PlanningAgent } from '../../src/agents/planning-agent';
 import { PrincipalAgent } from '../../src/agents/principal-agent';
 import { AgentOrchestrator } from '../../src/backend/orchestrator';
+import { buildWorkflowPreview } from '../../src/backend/agent-preview';
 import { LlmManager } from '../../src/backend/llm/llm-manager';
 import { createProjectSnapshot } from '../../src/backend/project-snapshot';
 import { Sandbox } from '../../src/backend/sandbox';
@@ -175,6 +176,19 @@ describe('Nexio IDE scaffold', () => {
 
     expect(response.provider).toBe('openai');
     expect(response.text).toContain('Describe');
+  });
+
+  test('workflow preview falls back to the principal result when no suggestions are available', () => {
+    const result = buildWorkflowPreview({
+      ideaSuggestions: [],
+      autocompleteExamples: [],
+      roadmapTasks: [],
+      principalMessage: 'Principal agent completed without patch preview.',
+      fallbackPrompt: 'Genera la siguiente mejora del editor.'
+    });
+
+    expect(result.taskPreview).toContain('Principal agent completed without patch preview.');
+    expect(result.pendingPatch).toContain('Principal agent completed without patch preview.');
   });
 
   test('project snapshot enumerates files from the workspace root', async () => {

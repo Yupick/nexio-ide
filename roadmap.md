@@ -24,13 +24,13 @@ Todo dentro de un **sandbox seguro** y con control humano para aprobar diffs.
 - Configurar TypeScript, ESLint, Prettier, Husky.
 - Estado: entregado y validado con tests iniciales.
 
-### Fase 1 MVP Núcleo (en curso)
+### Fase 1 MVP Núcleo (completado)
 - Electron + Node.js + Monaco integrado.
 - Explorador de archivos limitado a carpeta raíz.
 - Editor con pestañas y vista diff.
 - Backend local (IPC / WebSocket) y sandbox básico.
 - Hito actual: snapshot del proyecto y configuración base del runtime.
-- Estado: activo; se implementa la capa de contexto, sandbox y configuración del workspace.
+- Estado: completado; se consolidó la capa de contexto, sandbox, workspace, tabs, menú y launcher del editor.
 
 ### Fase 2 Agente Ideas y Planificación (completado parcialmente)
 - **Agente de Ideas**: interfaz conversacional para que el usuario explore y refine conceptos.
@@ -40,7 +40,7 @@ Todo dentro de un **sandbox seguro** y con control humano para aprobar diffs.
 - Hito actual: orquestador + gestor LLM + snapshot del proyecto.
 - Estado: validado con tests del flujo base.
 
-### Fase 3 Agente Principal y Plugins Básicos (hito actual)
+### Fase 3 Agente Principal y Plugins Básicos (completado)
 - Implementar agente principal (orquestador) como servicio local.
 - Definir API de plugins y cargar plugins desde `plugins/`.
 - Plugins iniciales: refactor, testing, docs.
@@ -49,7 +49,7 @@ Todo dentro de un **sandbox seguro** y con control humano para aprobar diffs.
 - Hito adicional: configuración del provider seleccionado en el runtime y conectores reales para Gemini/Grok, con fallback local y registro de plugins disponibles por el orquestador.
 - Estado: implementado y validado con tests.
 
-### Fase 4 Ejecución y Validación (hito actual)
+### Fase 4 Ejecución y Validación (completado)
 - Flujo completo: agente principal recibe roadmap del agente de planificación y ejecuta.
 - Plugins devuelven diffs; usuario aprueba/rechaza.
 - Logs y auditoría.
@@ -136,10 +136,10 @@ Dejar el producto en un estado de pruebas internas y de validación de calidad, 
 - [x] Pruebas unitarias del runtime y del flujo principal.
 - [x] Validación de seguridad básica del sandbox y escapes por symlink.
 - [x] Smoke tests del shell de interfaz.
-- [ ] Revisión manual del flujo completo con un caso real de tarea.
-- [ ] Ajustes de UX y legibilidad de la consola de agentes.
-- [ ] Documentación de uso para pruebas internas.
-- Estado: casi lista para validación operativa.
+- [x] Revisión manual del flujo completo con un caso real de tarea.
+- [x] Ajustes de UX y legibilidad de la consola de agentes.
+- [x] Documentación de uso para pruebas internas.
+- Estado: lista para validación operativa y cierre de ciclo GitFlow.
 
 ### Fase B - QA de release candidate (Sprint 3 - Sprint 4)
 - [x] Ejecutar la matriz de pruebas de QA: unitarias, integración, E2E, smoke y seguridad.

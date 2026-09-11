@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -652,7 +652,7 @@
         </div>
 
         <div class="sidebar-section">
-          <div class="sidebar-title">Explorer</div>
+          <div class="sidebar-title">Explorador</div>
           <div id="workspace-tree"></div>
         </div>
       </aside>
@@ -660,12 +660,12 @@
       <main class="center">
         <div class="center-header">
           <div class="window-header-row">
-            <div class="window-title">Desktop editor</div>
-            <div class="active-file-label" id="active-file-label">No file selected</div>
+            <div class="window-title">Editor de escritorio</div>
+            <div class="active-file-label" id="active-file-label">Ningún archivo seleccionado</div>
             <div class="desktop-menu">
               <div class="menu-shell">
-                <button class="menu-btn" id="menu-files" type="button" aria-expanded="false">Archivos</button>
-                <div class="menu-dropdown" id="files-menu" role="menu" aria-label="Menú de archivos">
+                <button class="menu-btn" id="menu-files" type="button" aria-expanded="false">Archivo</button>
+                <div class="menu-dropdown" id="files-menu" role="menu" aria-label="Menú de archivo">
                   <button class="menu-item" type="button" data-menu-action="open-file">Abrir archivo</button>
                   <button class="menu-item" type="button" data-menu-action="close-file">Cerrar archivo</button>
                   <button class="menu-item" type="button" data-menu-action="save-file">Guardar archivo</button>
@@ -677,11 +677,12 @@
                   <button class="menu-item" type="button" data-menu-action="config">Configuración</button>
                 </div>
               </div>
-              <button class="menu-btn" id="menu-open-workspace" type="button">Espacio de trabajo</button>
+              <button class="menu-btn" id="menu-open-workspace" type="button">Workspace</button>
+              <button class="menu-btn" id="menu-config" type="button">Configuración</button>
             </div>
           </div>
-          <div class="shortcut-hints" aria-label="keyboard shortcuts">
-            <span>Shortcuts:</span>
+          <div class="shortcut-hints" aria-label="atajos de teclado">
+            <span>Atajos:</span>
             <span class="shortcut-key">Ctrl+O</span>
             <span class="shortcut-key">Ctrl+W</span>
             <span class="shortcut-key">Ctrl+X</span>
@@ -702,45 +703,45 @@
         <div class="status-bar">
           <div class="status-pill">
             <span class="status-indicator"></span>
-            <span id="status-text">Ready</span>
+            <span id="status-text">Listo</span>
           </div>
           <div class="toolbar-actions">
-            <button class="ghost-btn" id="open-file-btn" type="button">Open file</button>
-            <button class="ghost-btn" id="open-workspace-btn" type="button">Open workspace</button>
-            <button class="primary-btn" id="save-btn" type="button">Save</button>
+            <button class="ghost-btn" id="open-file-btn" type="button">Abrir archivo</button>
+            <button class="ghost-btn" id="open-workspace-btn" type="button">Abrir espacio de trabajo</button>
+            <button class="primary-btn" id="save-btn" type="button">Guardar</button>
           </div>
         </div>
       </main>
 
       <aside class="panel">
         <div class="panel-block">
-          <span class="badge">AI Console</span>
-          <h3>Agent workflow</h3>
+          <span class="badge">Consola IA</span>
+          <h3>Flujo del agente</h3>
           <div class="prompt-bar">
-            <input id="prompt-input" class="prompt-input" type="text" placeholder="Ej: crea una función de saludo" aria-label="AI prompt" />
-            <button id="prompt-submit" class="prompt-button" type="button">Ask</button>
+            <input id="prompt-input" class="prompt-input" type="text" placeholder="Ej: crea una función de saludo" aria-label="Prompt de IA" />
+            <button id="prompt-submit" class="prompt-button" type="button">Preguntar</button>
           </div>
           <div class="mode-switch">
             <button class="mode-btn active" data-mode="ideas" type="button">Ideas</button>
-            <button class="mode-btn" data-mode="execution" type="button">Execution</button>
+            <button class="mode-btn" data-mode="execution" type="button">Ejecución</button>
           </div>
           <div class="chat-log" id="chat-log">
-            Ideas mode ready. Select a workspace file and the agent will review the active context.
+            Modo ideas listo. Selecciona un archivo del workspace para que el agente revise el contexto actual.
           </div>
         </div>
 
         <div class="panel-block">
           <h3>Roadmap</h3>
           <ul class="roadmap-list">
-            <li>Workspace startup</li>
-            <li>File explorer</li>
-            <li>Editor + save flow</li>
-            <li>Approval diff review</li>
+            <li>Inicio del workspace</li>
+            <li>Explorador de archivos</li>
+            <li>Editor + flujo de guardado</li>
+            <li>Revisión de diff con aprobación</li>
           </ul>
         </div>
 
         <div class="panel-block">
-          <h3>Diff review</h3>
+          <h3>Revisión de diff</h3>
           <div class="diff-box" id="diff-box">--- src/example.ts
 +++ src/example.ts
 @@
@@ -749,10 +750,10 @@
           </div>
 
           <div class="approval-actions">
-            <button class="approve-btn" type="button">Approve</button>
-            <button class="reject-btn" type="button">Request changes</button>
+            <button class="approve-btn" type="button">Aprobar</button>
+            <button class="reject-btn" type="button">Solicitar cambios</button>
           </div>
-          <div id="approval-status">Awaiting review</div>
+          <div id="approval-status">Esperando revisión</div>
         </div>
       </aside>
     </div>
@@ -1066,6 +1067,10 @@
         statusText.textContent = message;
       }
 
+      function openConfigFromHeader() {
+        openConfiguration();
+      }
+
       async function triggerAgentWorkflow(customPrompt = null) {
         const taskTitle = state.activeFile
           ? `Review active file: ${state.activeFile}`
@@ -1075,7 +1080,6 @@
         chatLog.textContent = `Generating ideas and roadmap for ${taskTitle}...`;
 
         try {
-          const taskPrompt = customPrompt || (state.activeFile ? `Quiero ayuda para continuar en ${state.activeFile}` : 'Quiero sugerencias de autocompletado y ejemplos de código para el editor');
           const result = await window.electronAPI.runAgentWorkflow(taskTitle, state.activeFile, {
             provider: state.agentConfig.provider,
             agent: state.agentConfig.agent,
@@ -1090,51 +1094,50 @@
             return;
           }
 
-          const ideaSuggestions = result.data?.ideaResult?.data?.suggestions ?? [];
-          const autocompleteExamples = result.data?.ideaResult?.data?.autocompleteExamples ?? [];
-          const roadmapTasks = result.data?.planResult?.data?.roadmap?.tasks ?? [];
-          const principalMessage = result.data?.principalResult?.message ?? 'Execution ready for review.';
+          const ideaSuggestions = Array.isArray(result.data?.ideaResult?.data?.suggestions)
+            ? result.data.ideaResult.data.suggestions.filter(Boolean)
+            : [];
+          const autocompleteExamples = Array.isArray(result.data?.ideaResult?.data?.autocompleteExamples)
+            ? result.data.ideaResult.data.autocompleteExamples.filter(Boolean)
+            : [];
+          const roadmapTasks = Array.isArray(result.data?.planResult?.data?.roadmap?.tasks)
+            ? result.data.planResult.data.roadmap.tasks.filter(Boolean)
+            : [];
+          const principalMessage = result.data?.principalResult?.message ?? 'Ejecución lista para revisión.';
+
+          const preview = buildWorkflowPreview({
+            ideaSuggestions,
+            autocompleteExamples,
+            roadmapTasks,
+            principalMessage,
+            fallbackPrompt: customPrompt || (state.activeFile ? `Quiero ayuda para continuar en ${state.activeFile}` : 'Quiero sugerencias de autocompletado y ejemplos de código para el editor')
+          });
 
           const generatedSuggestions = autocompleteExamples.length > 0
             ? autocompleteExamples.map((example) => ({
-                label: example.split('\n')[0].slice(0, 38),
-                text: example
+                label: String(example).split('\n')[0].slice(0, 38),
+                text: String(example)
               }))
             : buildLocalSuggestions(editor.value, state.activeFile);
 
           state.suggestions = generatedSuggestions;
-          state.pendingPatch = generatedSuggestions[0]?.text || taskPreview || principalMessage;
+          state.pendingPatch = preview.pendingPatch;
           renderCompletionSuggestions();
 
           if (state.mode === 'ideas') {
-            const suggestionsText = ideaSuggestions.length > 0
-              ? ideaSuggestions.map((entry) => `• ${entry}`).join('\n')
-              : `Ideas mode complete. ${result.message}`;
-            const examplesText = autocompleteExamples.length > 0
-              ? `\n\nAutocomplete examples:\n${autocompleteExamples.map((entry) => `  - ${entry.split('\n')[0]}`).join('\n')}`
-              : '';
-            chatLog.textContent = `${suggestionsText}${examplesText}`;
+            chatLog.textContent = preview.suggestionsText;
           } else {
             chatLog.textContent = principalMessage;
           }
 
-          const taskPreview = roadmapTasks.length > 0
-            ? roadmapTasks.map((task) => `- ${task.title}: ${task.description}`).join('\n')
-            : 'No roadmap tasks produced yet.';
-
-          const examplePreview = autocompleteExamples.length > 0
-            ? `\n\nExample output:\n${autocompleteExamples[0]}`
-            : '';
-
-          state.pendingPatch = (autocompleteExamples[0] || taskPreview || principalMessage || 'No patch generated.');
-          diffBox.textContent = `${taskPreview}${examplePreview}`;
-          approvalStatus.textContent = result.data?.approvalStatus ?? 'Awaiting review';
+          diffBox.textContent = preview.taskPreview;
+          approvalStatus.textContent = result.data?.approvalStatus ?? 'Esperando revisión';
           approvalStatus.style.color = '#e2e8f0';
           diffBox.style.borderColor = 'rgba(148, 163, 184, 0.2)';
-          setStatus('Workflow completed');
+          setStatus('Flujo completado');
 
           if (customPrompt) {
-            const trimmed = customPrompt.trim();
+            const trimmed = String(customPrompt).trim();
             if (trimmed) {
               chatLog.textContent = `${chatLog.textContent}\n\nPrompt: ${trimmed}`;
             }
@@ -1147,7 +1150,7 @@
       }
 
       function updateActiveFileLabel() {
-        activeFileLabel.textContent = state.activeFile ? state.activeFile : 'No file selected';
+        activeFileLabel.textContent = state.activeFile ? state.activeFile : 'Ningún archivo seleccionado';
       }
 
       function getActiveTab() {
@@ -1402,7 +1405,7 @@
         state.workspace = await window.electronAPI.listWorkspace();
         renderTree(state.workspace);
         renderTabs();
-        setStatus(`Workspace changed: ${selectedRoot}`);
+        setStatus(`Workspace cambiado: ${selectedRoot}`);
 
         const firstFile = findFirstFile(state.workspace);
         if (firstFile) {
@@ -1455,16 +1458,16 @@
           setStatus(`Opened ${relativePath}`);
           renderTabs();
           renderTree(state.workspace);
-          chatLog.textContent = `Reviewing ${relativePath}. Context loaded from workspace root.`;
+          chatLog.textContent = `Revisando ${relativePath}. Se cargó el contexto desde la raíz del workspace.`;
         } catch (error) {
           console.error(error);
-          setStatus('Unable to open file');
+          setStatus('No se pudo abrir el archivo');
         }
       }
 
       async function saveCurrentFile() {
         if (!state.activeFile) {
-          setStatus('No active file to save');
+          setStatus('No hay archivo activo para guardar');
           return false;
         }
 
@@ -1475,13 +1478,13 @@
             activeTab.originalContent = editor.value;
             activeTab.dirty = false;
           }
-          setStatus(`Saved ${state.activeFile}`);
+          setStatus(`Guardado ${state.activeFile}`);
           updateActiveFileLabel();
           renderTabs();
           return true;
         } catch (error) {
           console.error(error);
-          setStatus('Save failed');
+          setStatus('Fallo al guardar');
           return false;
         }
       }
@@ -1510,7 +1513,7 @@
             state.activeFile = null;
             editor.value = '';
             updateActiveFileLabel();
-            setStatus('No file selected');
+            setStatus('Ningún archivo seleccionado');
             renderTabs();
             renderTree(state.workspace);
           }
@@ -1520,19 +1523,31 @@
       }
 
       async function bootstrap() {
-        state.agentConfig = getStoredAgentConfig();
-        const config = await window.electronAPI.getConfig();
-        state.config = config;
+        if (!window.electronAPI) {
+          setStatus('API del editor no disponible');
+          chatLog.textContent = 'La API de Electron no está disponible. Revisa el preload o la ventana principal.';
+          return;
+        }
 
-        const workspace = await window.electronAPI.listWorkspace();
-        state.workspace = workspace;
-        renderTree(workspace);
-        updateActiveFileLabel();
-        setStatus(`Workspace ready: ${config.workspaceRoot}`);
+        try {
+          state.agentConfig = getStoredAgentConfig();
+          const config = await window.electronAPI.getConfig();
+          state.config = config;
 
-        const firstFile = findFirstFile(workspace);
-        if (firstFile) {
-          await openFile(firstFile, true);
+          const workspace = await window.electronAPI.listWorkspace();
+          state.workspace = workspace;
+          renderTree(workspace);
+          updateActiveFileLabel();
+          setStatus(`Workspace listo: ${config.workspaceRoot}`);
+
+          const firstFile = findFirstFile(workspace);
+          if (firstFile) {
+            await openFile(firstFile, true);
+          }
+        } catch (error) {
+          console.error('Bootstrap failed:', error);
+          setStatus('Error al inicializar el workspace');
+          chatLog.textContent = 'No se pudo inicializar el workspace. Revisa la conexión del backend de Electron.';
         }
       }
 
@@ -1658,6 +1673,10 @@
         await switchWorkspace();
       });
 
+      document.getElementById('menu-config').addEventListener('click', () => {
+        openConfigFromHeader();
+      });
+
       document.querySelectorAll('.menu-item').forEach((button) => {
         button.addEventListener('click', async () => {
           const action = button.dataset.menuAction;
@@ -1718,17 +1737,17 @@
           }
         }
 
-        approvalStatus.textContent = 'Approved';
+        approvalStatus.textContent = 'Aprobado';
         approvalStatus.style.color = '#bbf7d0';
         diffBox.style.borderColor = 'rgba(34, 197, 94, 0.4)';
-        setStatus('Agent patch approved');
+        setStatus('Parche del agente aprobado');
       });
 
       document.querySelector('.reject-btn').addEventListener('click', () => {
-        approvalStatus.textContent = 'Request changes';
+        approvalStatus.textContent = 'Solicitar cambios';
         approvalStatus.style.color = '#fecaca';
         diffBox.style.borderColor = 'rgba(239, 68, 68, 0.4)';
-        setStatus('Agent patch rejected');
+        setStatus('Parche del agente rechazado');
       });
 
       promptSubmit.addEventListener('click', async () => {
@@ -1758,16 +1777,22 @@
           state.mode = button.dataset.mode;
           document.querySelectorAll('.mode-btn').forEach((item) => item.classList.toggle('active', item === button));
           if (state.mode === 'ideas') {
-            chatLog.textContent = 'Ideas mode ready. The agent is reviewing the current workspace context.';
+            chatLog.textContent = 'Modo ideas listo. El agente está revisando el contexto actual del workspace.';
           } else {
-            chatLog.textContent = 'Execution mode active. The principal agent is preparing the reviewable result.';
+            chatLog.textContent = 'Modo ejecución activo. El agente principal está preparando el resultado revisable.';
           }
 
           await triggerAgentWorkflow();
         });
       });
 
-      bootstrap();
+      window.addEventListener('DOMContentLoaded', () => {
+        bootstrap().catch((error) => {
+          console.error('Unexpected bootstrap error:', error);
+          setStatus('Error crítico de arranque');
+          chatLog.textContent = 'El arranque del editor falló antes de cargar el workspace.';
+        });
+      });
     </script>
   </body>
 </html>

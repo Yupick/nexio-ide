@@ -2,7 +2,7 @@
  * Electron main process entry point.
  * This file creates the application window and exposes the desktop workspace IPC contract.
  */
-import { app, BrowserWindow, dialog, ipcMain } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, Menu } from 'electron';
 import path from 'node:path';
 
 import { createAppConfig, defaultAgentRuntimeSettings, type AgentRuntimeSettings } from '../backend/config';
@@ -19,13 +19,18 @@ function setWorkspaceRoot(nextRoot: string): string {
 }
 
 function createWindow(): void {
+  Menu.setApplicationMenu(null);
+
   const mainWindow = new BrowserWindow({
     width: 1500,
     height: 980,
     minWidth: 1200,
     minHeight: 760,
+    show: false,
     title: 'Nexio IDE',
     backgroundColor: '#0f172a',
+    autoHideMenuBar: true,
+    titleBarStyle: 'hiddenInset',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -33,10 +38,23 @@ function createWindow(): void {
     }
   });
 
+  mainWindow.setMenuBarVisibility(false);
+
   const indexPath = path.resolve(process.cwd(), 'src/ui/index.html');
-  mainWindow.loadFile(indexPath).catch((error) => {
-    console.error('Failed to load UI:', error);
+  mainWindow.webContents.on('did-fail-load', (_event, errorCode, description) => {
+    console.error('Failed to load UI:', { errorCode, description });
   });
+
+  mainWindow.loadFile(indexPath)
+    .then(() => {
+      mainWindow.show();
+      mainWindow.focus();
+    })
+    .catch((error) => {
+      console.error('Failed to load UI:', error);
+      mainWindow.show();
+      mainWindow.focus();
+    });
 }
 
 app.whenReady().then(() => {

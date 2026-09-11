@@ -5,9 +5,9 @@
   "description": "Editor IA multiplataforma con agentes, plugins y sandbox local.",
   "main": "dist/src/electron/main.js",
   "scripts": {
-    "dev": "npm run build && electron . --no-sandbox",
-    "start": "npm run start:desktop",
-    "start:desktop": "if command -v xvfb-run >/dev/null 2>&1; then xvfb-run -a electron . --no-sandbox; elif [ -n \"$DISPLAY\" ]; then electron . --no-sandbox; else echo 'No hay una sesión gráfica disponible. Instala xvfb o ejecuta la app desde un entorno con DISPLAY.'; exit 1; fi",
+    "dev": "npm run build && electron . --no-sandbox --disable-gpu --disable-software-rasterizer",
+    "start": "./start-desktop.sh",
+    "start:desktop": "./start-desktop.sh",
     "build": "tsc -p tsconfig.json",
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --write .",
