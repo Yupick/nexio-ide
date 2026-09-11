@@ -184,4 +184,71 @@ describe('Nexio IDE scaffold', () => {
     expect(snapshot.files.length).toBeGreaterThan(0);
     expect(snapshot.files.some((file) => file.endsWith('README.md'))).toBe(true);
   });
+
+  test('ideas and planning agents use the workspace context to generate actionable output', async () => {
+    const ideasAgent = new IdeasAgent();
+    const planningAgent = new PlanningAgent();
+    const snapshot = createProjectSnapshot(process.cwd());
+    const task: AgentTask = {
+      id: 'task-context-1',
+      title: 'Improve agent execution workflow',
+      description: 'Create a concrete execution flow for the IDE agents.',
+      priority: 'high',
+      dependencies: []
+    };
+
+    const context: AgentContext = {
+      snapshot,
+      roadmap: {
+        version: '1.0.0',
+        summary: 'Context aware workflow',
+        tasks: []
+      },
+      sandbox: {
+        allowedRoots: [process.cwd()],
+        readOnly: true
+      }
+    };
+
+    const ideaResult = await ideasAgent.think(context, task);
+    const planResult = await planningAgent.plan(context, task);
+
+    expect(ideaResult.ok).toBe(true);
+    expect(ideaResult.data).toHaveProperty('suggestions');
+    expect(String(ideaResult.data?.suggestions).toLowerCase()).toContain('src');
+    expect(planResult.ok).toBe(true);
+    expect(planResult.data).toHaveProperty('roadmap');
+    expect(Array.isArray((planResult.data as any)?.roadmap?.tasks)).toBe(true);
+  });
+
+  test('ideas agent suggests code completion examples from user intent and editor context', async () => {
+    const ideasAgent = new IdeasAgent();
+    const snapshot = createProjectSnapshot(process.cwd());
+    const task: AgentTask = {
+      id: 'task-completion-1',
+      title: 'Provide autocomplete examples',
+      description: 'Suggest completions while the user types in the editor.',
+      priority: 'medium',
+      dependencies: [],
+      metadata: {
+        prompt: 'Quiero una función que reciba un nombre y devuelva un saludo',
+        editorContext: 'const greet = ',
+        language: 'typescript'
+      }
+    };
+
+    const context: AgentContext = {
+      snapshot,
+      roadmap: { version: '1.0.0', summary: 'Autocomplete examples', tasks: [] },
+      sandbox: { allowedRoots: [process.cwd()], readOnly: true }
+    };
+
+    const result = await ideasAgent.think(context, task);
+
+    expect(result.ok).toBe(true);
+    expect(result.data).toHaveProperty('autocompleteExamples');
+    expect(Array.isArray(result.data?.autocompleteExamples)).toBe(true);
+    expect(String(result.data?.autocompleteExamples).toLowerCase()).toContain('greet');
+    expect(String(result.data?.autocompleteExamples).toLowerCase()).toContain('function');
+  });
 });

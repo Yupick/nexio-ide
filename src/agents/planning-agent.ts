@@ -5,14 +5,17 @@ import type { AgentContext, AgentExecutionResult, AgentTask, Roadmap } from '../
 
 export class PlanningAgent {
   public async plan(context: AgentContext, task: AgentTask): Promise<AgentExecutionResult> {
+    const setupTaskId = `${task.id}-setup`;
+    const validationTaskId = `${task.id}-validate`;
+
     const roadmap: Roadmap = {
       version: '1.0.0',
-      summary: `Plan generated from task: ${task.title}`,
+      summary: `Plan generated from task: ${task.title}. Targeted to the current workspace snapshot and execution boundaries.`,
       tasks: [
         {
-          id: `${task.id}-setup`,
-          title: 'Project setup',
-          description: 'Initialize configuration and tooling.',
+          id: setupTaskId,
+          title: 'Project context and constraints',
+          description: 'Validate the sandbox root, confirm project context, and identify affected files.',
           priority: 'high',
           dependencies: []
         },
@@ -21,18 +24,26 @@ export class PlanningAgent {
           title: task.title,
           description: task.description,
           priority: task.priority,
-          dependencies: task.dependencies.length > 0 ? task.dependencies : [`${task.id}-setup`]
+          dependencies: [setupTaskId]
+        },
+        {
+          id: validationTaskId,
+          title: 'Validation and QA gate',
+          description: 'Run unit or smoke validation for the task outcome and verify lint/test safety.',
+          priority: 'high',
+          dependencies: [`${task.id}-execution`]
         }
       ]
     };
 
     return {
       ok: true,
-      message: 'Planning agent created a roadmap payload.',
+      message: 'Planning agent created a roadmap payload grounded in the workspace and task constraints.',
       data: {
         taskId: task.id,
         roadmap,
-        contextRoot: context.snapshot.rootPath
+        contextRoot: context.snapshot.rootPath,
+        validationGate: validationTaskId
       }
     };
   }

@@ -5,6 +5,8 @@ import type { LlmProvider, LlmRuntimeConfig } from './types';
 const DEFAULT_MODEL_BY_PROVIDER: Record<LlmProvider, string> = {
   openai: 'gpt-4o-mini',
   ollama: 'llama3.1',
+  gemini: 'gemini-2.0-flash',
+  grok: 'grok-2-latest',
   local: 'local-model'
 };
 
@@ -27,6 +29,10 @@ export function resolveLlmRuntimeConfig(provider: LlmProvider): LlmRuntimeConfig
     openaiApiKey: process.env.OPENAI_API_KEY?.trim() || undefined,
     openaiBaseUrl: process.env.OPENAI_BASE_URL?.trim() || 'https://api.openai.com/v1',
     ollamaBaseUrl: process.env.OLLAMA_BASE_URL?.trim() || 'http://localhost:11434',
+    geminiApiKey: process.env.GEMINI_API_KEY?.trim() || undefined,
+    geminiBaseUrl: process.env.GEMINI_BASE_URL?.trim() || 'https://generativelanguage.googleapis.com',
+    grokApiKey: process.env.GROK_API_KEY?.trim() || undefined,
+    grokBaseUrl: process.env.GROK_BASE_URL?.trim() || 'https://api.x.ai/v1',
     timeoutMs: readNumber('LLM_TIMEOUT_MS', 30000)
   };
 }
