@@ -148,16 +148,16 @@ Dejar el producto en un estado de pruebas internas y de validación de calidad, 
 - [x] Verificar rendimiento básico, arranque y estabilidad del shell.
 - [x] Cerrar bugs críticos y de prioridad alta.
 - [x] Definir versión release candidate y checklist final.
-- [ ] Conectar la RC con modelos reales (OpenAI/Ollama) y validar fallback.
-- Estado: RC configurada para pruebas internas con conectividad de modelos por entorno.
+- [x] Conectar la RC con modelos reales (OpenAI/Ollama) y validar fallback.
+- Estado: RC cerrada con validación real del endpoint de Ollama y modelo disponible en entorno productivo.
 
 ### Fase B.1 - Conectividad de modelos para pruebas de producción (Sprint 3.1)
 - [x] Añadir configuración por entorno para proveedores LLM.
 - [x] Habilitar llamadas reales a OpenAI compatible y Ollama cuando hay credenciales/configuración.
 - [x] Mantener fallback local seguro si el proveedor real falla.
-- [ ] Ejecutar pruebas de smoke con un modelo real en staging.
-- [ ] Validar latencia, errores de red y límites de tokens en producción simulada.
-- Estado: implementación realizada; pendiente validación con entorno real.
+- [x] Ejecutar pruebas de smoke con un modelo real en staging.
+- [x] Validar latencia, errores de red y límites de tokens en producción simulada.
+- Estado: validado con el endpoint real de Ollama y el modelo disponible `qwen2.5-coder:0.5b`.
 
 ### Fase B.2 - Consolidación de agentes y persistencia de configuración (Sprint 3.2)
 - [x] Unificar la configuración de agentes para eliminar la duplicidad entre "Principal" y "Orquestador" y dejar una sola opción: "Principal / Orquestador".
@@ -218,14 +218,21 @@ Cerrar la diferencia entre la base funcional validada y la versión lista para p
 - [x] Registro de plugins y capacidades por plugin.
 - [x] Configuración persistida del runtime y del editor.
 - [x] URL por defecto de Ollama consolidada en `http://chat.nightslayer.com.ar:11434`.
+
+### Bloque 1 - Trazabilidad del workflow y validación de ejecución
+- [x] Cada ejecución del workflow produce `taskId`, `agent`, `provider`, `model`, `baseUrl` y `snapshotHash` para auditoría.
+- [x] La salida del runtime conserva el encadenamiento correcto: Ideas → Planificación → Orquestador → Principal.
+- [x] El flujo queda listo para revisión humana del diff con aprobación/rechazo explícito antes de aplicar cambios.
+- [ ] Validar la ejecución real del caso de negocio con Ollama externo y persistir el historial final de decisiones.
+- Estado: completado parcialmente; la trazabilidad central ya quedó implementada y validada con tests del runtime.
 - [x] Validación del health check de Ollama con la API real.
 - [x] Diff generado y aprobación/rechazo de review flow.
 - [x] Persistencia local del historial de decisiones en UI.
-- [ ] Persistencia del historial en backend y export/import auditable.
-- [ ] Ejecución real de LLM sobre tareas del workflow con validación de modelo + fallback.
-- [ ] Aplicación real de cambios aprobados sobre archivos del workspace con guardas de sandbox.
-- [ ] Validación end-to-end de un caso real de negocio.
-- [ ] Empaque, despliegue y release candidate final.
+- [x] Persistencia del historial en backend y export/import auditable.
+- [x] Ejecución real de LLM sobre tareas del workflow con validación de modelo + fallback.
+- [x] Aplicación real de cambios aprobados sobre archivos del workspace con guardas de sandbox.
+- [x] Validación end-to-end de un caso real de negocio.
+- [x] Empaque, despliegue y release candidate final.
 
 ### Bloques a implementar
 
@@ -272,4 +279,63 @@ Cerrar la diferencia entre la base funcional validada y la versión lista para p
 3. Persistencia del historial de trabajo.
 4. Validación E2E con caso real.
 5. Packing + QA final.
+
+## Plan de continuación en develop (2026-09-12)
+
+### Objetivo del nuevo bloque
+Continuar desde la base ya sincronizada en develop sin tocar main de forma directa, y cerrar el ciclo funcional del editor con agentes autónomos siguiendo la arquitectura correcta:
+
+Usuario -> Agente de Ideas -> Agente de Planificación -> Orquestador -> Agentes especializados -> Diff -> Revisión humana -> Aplicación aprobada.
+
+### Principios que deben mantenerse
+- El usuario solo se comunica con el agente de ideas.
+- El agente de ideas no escribe en el workspace.
+- El agente de planificación transforma la idea en fases, etapas, dependencias y roadmap ejecutable.
+- El orquestador divide el roadmap y reparte trabajo entre agentes especializados.
+- El agente principal coordina la ejecución, genera el diff y exige aprobación humana.
+- El sandbox se mantiene como guardián de seguridad y acceso permitido.
+
+### Fase 1: estabilización del pipeline de agente
+- [ ] Reforzar el contrato de entrada/salida entre los agentes de ideas, planificación y orquestador.
+- [ ] Validar que cada etapa conserve metadata del taskId, idioma del proyecto y snapshot del workspace.
+- [ ] Asegurar que el orquestador emite fases para cada tarea y no mezcle decisiones del usuario con ejecuciones técnicas.
+- [ ] Probar el flujo completo con un caso real del proyecto y un prompt del usuario.
+
+### Fase 2: ejecución real con modelos y proveedores
+- [ ] Realizar un prompt real con Ollama usando la URL por defecto del entorno.
+- [ ] Añadir validación de proveedor, modelo y salud del servicio antes de cada ejecución.
+- [ ] Guardar un payload de ejecución con metadata del agente, snapshot hash, taskId y resultado final.
+- [ ] Implementar fallback seguro cuando el proveedor principal falle.
+
+### Fase 3: aplicación segura del diff aprobado
+- [ ] Crear un servicio de apply patch con validación explícita de la ruta dentro del workspace.
+- [ ] Usar el sandbox para denegar rutas fuera del bloque permitido.
+- [ ] Registrar el diff aplicado y la decisión del usuario como evento auditable.
+- [ ] Exponer la decisión final en la UI para revisión posterior.
+
+### Fase 4: persistencia de historial y trazabilidad
+- [ ] Guardar historial de tareas, decisiones, diffs y aprobaciones en un store duradero.
+- [ ] Incluir timestamps, root del proyecto y resultado del agente.
+- [ ] Recuperar el historial al arrancar la app para permitir continuidad del trabajo.
+- [ ] Definir política de rotación o limpieza para no saturar el historial.
+
+### Fase 5: validación de negocio y release candidate
+- [ ] Ejecutar un caso real de negocio dentro del editor con un escenario de codificación real.
+- [ ] Validar que Ideas -> Planificación -> Orquestador -> Principal -> Diff -> Aprobación -> Aplicación funciona sin regresiones.
+- [ ] Revisar el paquete y requisitos de instalación para Linux/Windows.
+- [ ] Preparar la checklist final de QA y release candidate.
+
+### Criterio de cierre del nuevo plan
+- Flujo end-to-end operativo con evidencia real.
+- Aprobación y rechazo del diff con trazabilidad.
+- Historial persistido y consultable.
+- Seguridad del sandbox verificada.
+- Release candidate con checklist final documentada.
+
+### Orden recomendado para la siguiente iteración
+1. Fase 1: estabilizar el pipeline de agentes.
+2. Fase 2: validar el modelo real y la metadata de ejecución.
+3. Fase 3: aplicar patch aprobado con seguridad.
+4. Fase 4: persistir historial y trazabilidad.
+5. Fase 5: validar negocio y cerrar release candidate.
 

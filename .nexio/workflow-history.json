@@ -1,9 +1,21 @@
 [
   {
-    "taskId": "task-exec-2",
-    "status": "rejected",
-    "patch": "--- unsafe.txt\n+++ unsafe.txt\n@@\n-old\n+new\n",
-    "approvedAt": "2026-09-12T12:23:37.739Z",
-    "message": "Task task-exec-2 was rejected by the user."
+    "taskId": "task-exec-4",
+    "status": "approved",
+    "patch": "--- file.txt\n+++ file.txt\n@@\n-old\n+new\n",
+    "approvedAt": "2026-09-12T12:59:11.149Z",
+    "message": "Task task-exec-4 executed and approved.",
+    "targetPath": "file.txt",
+    "agent": "principal",
+    "provider": "ollama",
+    "model": "llama3.1",
+    "snapshotHash": "abc123",
+    "metadata": {
+      "agent": "principal",
+      "provider": "ollama",
+      "model": "llama3.1",
+      "snapshotHash": "abc123",
+      "taskId": "task-exec-4"
+    }
   }
 ]
