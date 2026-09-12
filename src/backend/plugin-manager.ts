@@ -13,6 +13,20 @@ export class PluginManager {
     this.pluginsDir = pluginsDir;
   }
 
+  private resolvePluginEntry(pluginDir: string): string {
+    const sourceEntry = path.join(this.pluginsDir, pluginDir, 'index.ts');
+    if (fs.existsSync(sourceEntry)) {
+      return sourceEntry;
+    }
+
+    const builtEntry = path.join(this.pluginsDir, pluginDir, 'index.js');
+    if (fs.existsSync(builtEntry)) {
+      return builtEntry;
+    }
+
+    return sourceEntry;
+  }
+
   public async loadAll(context: PluginContext): Promise<PluginInstance[]> {
     if (!fs.existsSync(this.pluginsDir)) {
       return [];
@@ -24,7 +38,7 @@ export class PluginManager {
     const loaded: PluginInstance[] = [];
 
     for (const pluginDir of pluginDirs) {
-      const pluginEntry = path.join(this.pluginsDir, pluginDir, 'index.ts');
+      const pluginEntry = this.resolvePluginEntry(pluginDir);
       if (!fs.existsSync(pluginEntry)) {
         continue;
       }
@@ -59,7 +73,8 @@ export class PluginManager {
         version: '0.1.0',
         type: 'agent',
         description: `${entry.name} plugin`,
-        entry: path.join(this.pluginsDir, entry.name)
+        entry: path.join(this.pluginsDir, entry.name),
+        capabilities: []
       }));
   }
 }

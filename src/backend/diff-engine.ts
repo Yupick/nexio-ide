@@ -16,4 +16,11 @@ export class DiffEngine {
 
     return diffLines.join('\n');
   }
+
+  public static createApprovalSummary(taskTitle: string, pluginName: string, detail: string, filePath: string): string {
+    const before = `# ${taskTitle}\n\nPending review\n`;
+    const after = `# ${taskTitle}\n\n- plugin: ${pluginName}\n- summary: ${detail}\n- status: awaiting_review\n`;
+
+    return this.createPatch(before, after, filePath);
+  }
 }

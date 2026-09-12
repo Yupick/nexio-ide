@@ -6,16 +6,18 @@ export default function createPlugin(context: PluginContext): PluginInstance {
     name: 'Refactor Plugin',
     type: 'agent',
     version: '0.1.0',
+    capabilities: ['refactor', 'cleanup', 'code', 'architecture'],
     async init() {
       context.logger('Refactor plugin initialized.');
     },
-    async execute(task: AgentTask): Promise<AgentExecutionResult> {
+    async execute(task: AgentTask, context?: { snapshot?: { rootPath?: string } }): Promise<AgentExecutionResult> {
       return {
         ok: true,
         message: `Refactor plugin processed ${task.title}.`,
         data: {
           taskId: task.id,
-          plugin: 'refactor'
+          plugin: 'refactor',
+          contextRoot: context?.snapshot?.rootPath ?? 'unknown'
         }
       };
     }

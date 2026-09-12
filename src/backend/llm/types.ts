@@ -33,7 +33,16 @@ export interface LlmResponse {
   };
 }
 
+export interface ProviderHealthStatus {
+  provider: LlmProvider;
+  ok: boolean;
+  baseUrl: string;
+  model?: string;
+  message?: string;
+}
+
 export interface LlmConnector {
   readonly provider: LlmProvider;
   complete(request: LlmRequest): Promise<LlmResponse>;
+  checkHealth?(baseUrl?: string, model?: string): Promise<ProviderHealthStatus>;
 }

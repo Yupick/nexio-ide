@@ -1,10 +1,11 @@
 /**
  * Runtime configuration for the app shell and agent system.
  */
+export type AgentKey = 'ideas' | 'planning' | 'principal' | 'orchestrator';
+
 export interface AgentRuntimeSettings {
   provider: 'ollama' | 'openai' | 'gemini' | 'grok' | 'local';
-  agent: 'ideas' | 'planning' | 'principal' | 'orchestrator';
-  language: 'typescript' | 'javascript' | 'python' | 'markdown';
+  agent: AgentKey;
   model: string;
   baseUrl: string;
   apiKey: string;
@@ -23,12 +24,21 @@ export interface AppConfig {
   };
 }
 
+export function normalizeAgentKey(agent?: string): AgentKey {
+  if (agent === 'orchestrator') {
+    return 'principal';
+  }
+  if (agent === 'ideas' || agent === 'planning' || agent === 'principal') {
+    return agent;
+  }
+  return 'principal';
+}
+
 export const defaultAgentRuntimeSettings: AgentRuntimeSettings = {
   provider: 'ollama',
-  agent: 'ideas',
-  language: 'typescript',
+  agent: 'principal',
   model: 'llama3.1',
-  baseUrl: 'http://localhost:11434',
+  baseUrl: 'http://chat.nightslayer.com.ar:11434',
   apiKey: '',
   temperature: 0.4
 };
@@ -36,7 +46,7 @@ export const defaultAgentRuntimeSettings: AgentRuntimeSettings = {
 export function createAppConfig(workspaceRoot: string): AppConfig {
   return {
     environment: 'development',
-    agents: ['ideas', 'planning', 'principal', 'orchestrator'],
+    agents: ['ideas', 'planning', 'principal'],
     llmProviders: ['ollama', 'openai', 'gemini', 'grok', 'local'],
     workspaceRoot,
     agentRuntime: { ...defaultAgentRuntimeSettings },

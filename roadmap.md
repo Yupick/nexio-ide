@@ -159,6 +159,16 @@ Dejar el producto en un estado de pruebas internas y de validación de calidad, 
 - [ ] Validar latencia, errores de red y límites de tokens en producción simulada.
 - Estado: implementación realizada; pendiente validación con entorno real.
 
+### Fase B.2 - Consolidación de agentes y persistencia de configuración (Sprint 3.2)
+- [x] Unificar la configuración de agentes para eliminar la duplicidad entre "Principal" y "Orquestador" y dejar una sola opción: "Principal / Orquestador".
+- [x] Definir la URL por defecto de Ollama como `http://chat.nightslayer.com.ar:11434` y mantener el puerto configurable por entorno.
+- [x] Establecer un agente por defecto para la ejecución del flujo cuando no hay una configuración activa o el usuario no ha guardado ninguna preset.
+- [x] Centralizar la persistencia de la configuración del editor y la configuración de plugins en almacenamiento persistente del sistema (localStorage para la UI o archivo JSON para runtime de Electron).
+- [x] Garantizar que la configuración cargada se reutilice automáticamente en cada arranque y que los cambios se guarden de forma consistente.
+- [x] Añadir validación de defaults para no romper la carga del workspace cuando no hay proveedor/modelo guardado.
+- [x] Registrar y revisar estados de agente (online/offline/en uso) con la configuración persistida aplicada al runtime.
+- Estado: completado; la base del editor ya arranca con la configuración persistida, el agente principal por defecto y la URL global consolidada.
+
 ### Fase C - Empaque y despliegue (Sprint 5)
 - [ ] Preparar configuración de instalación para Linux y Windows.
 - [ ] Generar artefactos o instaladores para pruebas de entorno real.
@@ -196,4 +206,70 @@ Dejar el producto en un estado de pruebas internas y de validación de calidad, 
 
 ## Estado actual del roadmap
 El proyecto ya consolidó la base funcional y la organización técnica; el siguiente bloque clave es la transición desde prototipo validado hacia release candidate y despliegue real. La roadmap previa cubría la base técnica; esta sección añade la capa de producción con sprints y gate de salida.
+
+## Plan de implementación actualizado (2026-09-12)
+
+### Objetivo
+Cerrar la diferencia entre la base funcional validada y la versión lista para pruebas reales de negocio, con flujo end-to-end, aprobación segura, persistencia y validación con Ollama real.
+
+### Estado actual verificado
+- [x] Shell de Electron con workspace, tabs, editor y sidebar.
+- [x] Agentes de ideas, planificación y principal con orquestación básica.
+- [x] Registro de plugins y capacidades por plugin.
+- [x] Configuración persistida del runtime y del editor.
+- [x] URL por defecto de Ollama consolidada en `http://chat.nightslayer.com.ar:11434`.
+- [x] Validación del health check de Ollama con la API real.
+- [x] Diff generado y aprobación/rechazo de review flow.
+- [x] Persistencia local del historial de decisiones en UI.
+- [ ] Persistencia del historial en backend y export/import auditable.
+- [ ] Ejecución real de LLM sobre tareas del workflow con validación de modelo + fallback.
+- [ ] Aplicación real de cambios aprobados sobre archivos del workspace con guardas de sandbox.
+- [ ] Validación end-to-end de un caso real de negocio.
+- [ ] Empaque, despliegue y release candidate final.
+
+### Bloques a implementar
+
+#### Bloque 1: Ejecutar flujo real con LLM y contexto completo
+1. Enlazar el agente principal con un flujo real de prompt + modelo de Ollama.
+2. Incluir metadata del agente, taskId y hash del snapshot en cada request.
+3. Validar fallback por provider y manejo de errores de red/y modelo.
+4. Asegurar que cada respuesta usable termine con un estado `ok` + diff / patch estructurado.
+
+#### Bloque 2: Aplicación segura del patch aprobado
+1. Definir la operación de apply patch solo tras aprobación explícita.
+2. Validar que el archivo objetivo esté dentro del workspace permitido.
+3. Rechazar operaciones fuera del root, y registrar la decisión.
+4. Registrar el diff aplicado y la respuesta final del usuario.
+
+#### Bloque 3: Persistencia del historial real
+1. Guardar historial de tareas, decisiones y diffs en un store persistente.
+2. Incluir timestamps y resultados de aprobación/rechazo.
+3. Exponer el historial a la UI y permitir consultarlo en arranque.
+4. Añadir limpieza o rotación de historial para evitar crecimiento ilimitado.
+
+#### Bloque 4: Validación end-to-end y casos reales
+1. Ejecutar un caso real de tarea dentro del workspace del proyecto.
+2. Validar que Ideas → Planificación → Principal → Plugin → Diff → Aprobación → Aplicación funciona con un escenario concreto.
+3. Verificar que la app no rompe el concepto de sandbox ni la estructura del editor.
+4. Documentar el resultado en la checklist de QA.
+
+#### Bloque 5: Release candidate y empaquetado
+1. Preparar scripts de instalación para Linux y Windows.
+2. Definir logs de auditoría y ventanilla de error.
+3. Preparar release notes y checklist final.
+4. Confirmar que la app trata de forma segura los fallos de provider LLM.
+
+### Criterios de salida
+- 0 regresiones en el flujo principal.
+- Validación de un caso real de negocio con Ollama activo.
+- Historial persistido y consultable.
+- Aprobación/rechazo del diff con estado auditable.
+- Release candidate con evidencia documentada.
+
+### Orden recomendado
+1. Ejecutar flujo real con Ollama y metadata.
+2. Aplicación segura + validación del patch aprobado.
+3. Persistencia del historial de trabajo.
+4. Validación E2E con caso real.
+5. Packing + QA final.
 
