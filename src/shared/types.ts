@@ -42,6 +42,16 @@ export interface AgentContext {
   };
 }
 
+export interface AgentMessage {
+  id: string;
+  type: 'task' | 'result' | 'event' | 'ack';
+  from: string;
+  to: string;
+  correlationId?: string;
+  payload: Record<string, unknown>;
+  createdAt: string;
+}
+
 export interface AgentExecutionResult {
   ok: boolean;
   message: string;
@@ -55,6 +65,7 @@ export interface PluginDefinition {
   type: 'agent' | 'syntax' | 'tool';
   description: string;
   entry: string;
+  capabilities?: string[];
 }
 
 export interface PluginContext {
@@ -67,7 +78,9 @@ export interface PluginInstance {
   name: string;
   type: PluginDefinition['type'];
   version: string;
+  capabilities?: string[];
   init: (context: PluginContext) => Promise<void>;
-  execute: (task: AgentTask) => Promise<AgentExecutionResult>;
+  execute: (task: AgentTask, context?: AgentContext) => Promise<AgentExecutionResult>;
+  handleMessage?: (message: AgentMessage) => Promise<AgentMessage | null>;
   shutdown?: () => Promise<void>;
 }

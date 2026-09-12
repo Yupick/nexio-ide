@@ -10,6 +10,17 @@ import { PromptManager } from '../../src/backend/llm/prompt-manager';
 import type { AgentContext, AgentTask } from '../../src/shared/types';
 
 describe('Nexio IDE scaffold', () => {
+  test('ollama connector exposes a real health check for the configured endpoint', async () => {
+    const manager = new LlmManager();
+    const health = await manager.checkProviderHealth('ollama');
+
+    expect(health).toMatchObject({
+      provider: 'ollama',
+      ok: expect.any(Boolean),
+      baseUrl: expect.any(String)
+    });
+  });
+
   test('ideas agent returns read-only guidance', async () => {
     const agent = new IdeasAgent();
     const context: AgentContext = {
@@ -92,6 +103,169 @@ describe('Nexio IDE scaffold', () => {
     const result = await agent.execute(context, task);
     expect(result.ok).toBe(true);
     expect(result.data).toHaveProperty('results');
+  });
+
+  test('principal agent executes with workspace context and passes it to the selected plugin', async () => {
+    const agent = new PrincipalAgent([
+      {
+        id: 'docs-plugin',
+        name: 'Docs Plugin',
+        type: 'agent',
+        version: '0.1.0',
+        capabilities: ['docs', 'documentation', 'readme'],
+        async init() {},
+        async execute(task: AgentTask, context?: AgentContext) {
+          return { ok: true, message: `Docs plugin handled ${task.title}.`, data: { plugin: 'docs-plugin', contextRoot: context?.snapshot.rootPath ?? 'missing' } };
+        }
+      } as any
+    ]);
+
+    const context: AgentContext = {
+      snapshot: {
+        name: 'nexio-ide',
+        rootPath: '/workspace',
+        files: ['README.md'],
+        lastUpdated: '2026-09-10T00:00:00Z'
+      },
+      sandbox: {
+        allowedRoots: ['/workspace'],
+        readOnly: true
+      }
+    };
+
+    const task: AgentTask = {
+      id: 'task-context-1',
+      title: 'Document the API for the workspace',
+      description: 'Create the missing documentation for the IDE project.',
+      priority: 'high',
+      dependencies: []
+    };
+
+    const result = await agent.execute(context, task);
+
+    expect(result.ok).toBe(true);
+    expect((result.data as any)?.taskDispatch).toEqual(['docs-plugin']);
+    expect((result.data as any)?.results[0].data).toMatchObject({ contextRoot: '/workspace' });
+  });
+
+  test('principal agent routes tasks to relevant plugin capabilities', async () => {
+    const agent = new PrincipalAgent([
+      {
+        id: 'docs-plugin',
+        name: 'Docs Plugin',
+        type: 'agent',
+        version: '0.1.0',
+        capabilities: ['docs', 'documentation', 'readme'],
+        async init() {},
+        async execute(task: AgentTask) {
+          return { ok: true, message: `Docs plugin handled ${task.title}.`, data: { plugin: 'docs-plugin' } };
+        }
+      } as any,
+      {
+        id: 'testing-plugin',
+        name: 'Testing Plugin',
+        type: 'agent',
+        version: '0.1.0',
+        capabilities: ['testing', 'qa', 'validation'],
+        async init() {},
+        async execute(task: AgentTask) {
+          return { ok: true, message: `Testing plugin handled ${task.title}.`, data: { plugin: 'testing-plugin' } };
+        }
+      } as any,
+      {
+        id: 'refactor-plugin',
+        name: 'Refactor Plugin',
+        type: 'agent',
+        version: '0.1.0',
+        capabilities: ['refactor', 'cleanup', 'code'],
+        async init() {},
+        async execute(task: AgentTask) {
+          return { ok: true, message: `Refactor plugin handled ${task.title}.`, data: { plugin: 'refactor-plugin' } };
+        }
+      } as any
+    ]);
+
+    const context: AgentContext = {
+      snapshot: {
+        name: 'nexio-ide',
+        rootPath: '/workspace',
+        files: ['README.md', 'src/app.ts'],
+        lastUpdated: '2026-09-10T00:00:00Z'
+      },
+      sandbox: {
+        allowedRoots: ['/workspace'],
+        readOnly: true
+      }
+    };
+
+    const task: AgentTask = {
+      id: 'task-capability-1',
+      title: 'Document the API and validate the QA flow',
+      description: 'Update docs and validate the regression test workflow.',
+      priority: 'high',
+      dependencies: []
+    };
+
+    const result = await agent.execute(context, task);
+
+    expect(result.ok).toBe(true);
+    expect((result.data as any)?.taskDispatch).toEqual(expect.arrayContaining(['docs-plugin', 'testing-plugin']));
+    expect((result.data as any)?.availableCapabilities).toEqual(expect.arrayContaining(['docs', 'testing', 'refactor']));
+  });
+
+  test('principal agent coordinates plugin communication through a message bus', async () => {
+    const agent = new PrincipalAgent([
+      {
+        id: 'docs-plugin',
+        name: 'Docs Plugin',
+        type: 'agent',
+        version: '0.1.0',
+        capabilities: ['docs', 'documentation', 'readme'],
+        async init() {},
+        async handleMessage(message: any) {
+          return {
+            id: `message-${Date.now()}`,
+            type: 'result',
+            from: 'docs-plugin',
+            to: message.from,
+            correlationId: message.id,
+            payload: { ok: true, message: `Docs plugin handled ${message.payload.task.title}.` }
+          };
+        },
+        async execute(task: AgentTask) {
+          return { ok: true, message: `Docs plugin handled ${task.title}.`, data: { plugin: 'docs-plugin' } };
+        }
+      } as any
+    ]);
+
+    const context: AgentContext = {
+      snapshot: {
+        name: 'nexio-ide',
+        rootPath: '/workspace',
+        files: ['README.md'],
+        lastUpdated: '2026-09-10T00:00:00Z'
+      },
+      sandbox: {
+        allowedRoots: ['/workspace'],
+        readOnly: true
+      }
+    };
+
+    const task: AgentTask = {
+      id: 'task-message-bus-1',
+      title: 'Document the module contract',
+      description: 'Write a concise module description and share the result back to the orchestrator.',
+      priority: 'high',
+      dependencies: []
+    };
+
+    const result = await agent.execute(context, task);
+
+    expect(result.ok).toBe(true);
+    expect((result.data as any)?.messages).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: 'task', to: 'docs-plugin' }),
+      expect.objectContaining({ type: 'result', from: 'docs-plugin' })
+    ]));
   });
 
   test('sandbox denies writes outside allowed roots', () => {

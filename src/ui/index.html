@@ -7,17 +7,23 @@
     <style>
       :root {
         color-scheme: dark;
-        --bg: #0f172a;
-        --surface: #111827;
-        --surface-strong: #0b1220;
-        --surface-soft: #1f2937;
-        --accent: #0b5fff;
-        --accent-soft: rgba(11, 95, 255, 0.18);
-        --text: #e2e8f0;
-        --muted: #94a3b8;
+        --bg: #07111f;
+        --bg-soft: #0f172a;
+        --surface: rgba(15, 23, 42, 0.9);
+        --surface-strong: rgba(11, 17, 30, 0.98);
+        --surface-soft: rgba(30, 41, 59, 0.92);
+        --panel: rgba(15, 23, 42, 0.85);
+        --panel-alt: rgba(17, 24, 39, 0.96);
+        --accent: #5ea2ff;
+        --accent-strong: #2f6ef6;
+        --accent-soft: rgba(94, 162, 255, 0.18);
+        --text: #e5eefb;
+        --muted: #a5b7d6;
         --success: #22c55e;
         --danger: #ef4444;
-        --border: rgba(148, 163, 184, 0.2);
+        --warning: #fbbf24;
+        --border: rgba(148, 163, 184, 0.22);
+        --shadow: 0 24px 60px rgba(2, 6, 23, 0.45);
       }
 
       * { box-sizing: border-box; }
@@ -38,11 +44,13 @@
         height: 100vh;
         display: grid;
         grid-template-columns: 270px minmax(0, 1fr) 340px;
-        background: linear-gradient(180deg, #0f172a 0%, #020817 100%);
+        background:
+          radial-gradient(circle at top left, rgba(94, 162, 255, 0.17), transparent 28%),
+          linear-gradient(180deg, var(--bg-soft) 0%, #020817 100%);
       }
 
       .sidebar, .panel {
-        background: rgba(17, 24, 39, 0.96);
+        background: linear-gradient(180deg, rgba(17, 24, 39, 0.96), rgba(15, 23, 42, 0.88));
         border-right: 1px solid var(--border);
         padding: 1rem;
       }
@@ -60,14 +68,15 @@
       }
 
       .brand-mark {
-        width: 2.2rem;
-        height: 2.2rem;
+        width: 2.35rem;
+        height: 2.35rem;
         display: grid;
         place-items: center;
-        border-radius: 0.75rem;
-        background: linear-gradient(135deg, var(--accent), #60a5fa);
+        border-radius: 0.85rem;
+        background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
         color: white;
-        font-weight: 700;
+        font-weight: 800;
+        box-shadow: 0 12px 25px rgba(47, 110, 246, 0.35);
       }
 
       .brand h2 {
@@ -78,10 +87,11 @@
       .badge {
         display: inline-flex;
         align-items: center;
-        background: var(--accent-soft);
-        color: #bfdbfe;
+        background: rgba(94, 162, 255, 0.12);
+        color: #dfeefe;
+        border: 1px solid rgba(94, 162, 255, 0.32);
         border-radius: 999px;
-        padding: 0.3rem 0.65rem;
+        padding: 0.32rem 0.7rem;
         font-size: 0.72rem;
         font-weight: 700;
         letter-spacing: 0.04em;
@@ -186,7 +196,8 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        background: rgba(2, 6, 23, 0.7);
+        background: rgba(2, 6, 23, 0.72);
+        backdrop-filter: blur(7px);
         z-index: 60;
       }
 
@@ -196,10 +207,10 @@
 
       .config-panel {
         width: min(620px, calc(100vw - 2rem));
-        background: rgba(15, 23, 42, 0.98);
+        background: linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(8, 14, 26, 0.98));
         border: 1px solid var(--border);
-        border-radius: 1rem;
-        box-shadow: 0 25px 60px rgba(15, 23, 42, 0.65);
+        border-radius: 1.1rem;
+        box-shadow: var(--shadow);
         padding: 1rem 1.1rem 1.2rem;
       }
 
@@ -232,6 +243,94 @@
         gap: 0.9rem;
       }
 
+      .plugin-manager-section {
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
+        margin-top: 0.6rem;
+      }
+
+      .plugin-manager-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 0.25rem;
+      }
+
+      .plugin-manager-header h4 {
+        margin: 0;
+        font-size: 0.95rem;
+      }
+
+      .plugin-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.55rem;
+        max-height: 230px;
+        overflow: auto;
+      }
+
+      .plugin-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.8rem;
+        padding: 0.7rem 0.8rem;
+        border: 1px solid var(--border);
+        border-radius: 0.8rem;
+        background: rgba(15, 23, 42, 0.86);
+      }
+
+      .plugin-card-main {
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+        min-width: 0;
+        flex: 1;
+      }
+
+      .plugin-toggle {
+        margin: 0;
+      }
+
+      .plugin-meta {
+        min-width: 0;
+      }
+
+      .plugin-meta strong {
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .plugin-meta small {
+        display: block;
+        color: var(--muted);
+        margin-top: 0.12rem;
+      }
+
+      .plugin-card-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+      }
+
+      .plugin-config-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 0.8rem;
+        padding: 0.85rem;
+        border: 1px solid var(--border);
+        border-radius: 0.8rem;
+        background: rgba(15, 23, 42, 0.65);
+      }
+
+      .plugin-config-panel.hidden {
+        display: none;
+      }
+
       .field-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -258,6 +357,14 @@
         border-radius: 0.7rem;
         padding: 0.72rem 0.8rem;
         font-size: 0.9rem;
+        transition: border-color 120ms ease, box-shadow 120ms ease;
+      }
+
+      .field-row input:focus,
+      .field-row select:focus {
+        outline: none;
+        border-color: rgba(94, 162, 255, 0.7);
+        box-shadow: 0 0 0 3px rgba(94, 162, 255, 0.15);
       }
 
       .config-actions {
@@ -267,13 +374,43 @@
         margin-top: 1rem;
       }
 
+      .config-actions-inline {
+        display: flex;
+        justify-content: flex-start;
+        margin-top: 0.25rem;
+      }
+
+      .config-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        padding: 0.8rem 0.85rem;
+        border: 1px solid var(--border);
+        border-radius: 0.85rem;
+        background: rgba(15, 23, 42, 0.5);
+      }
+
+      .config-group-title {
+        font-size: 0.72rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
       .menu-btn {
         background: rgba(148, 163, 184, 0.08);
         color: var(--text);
         border: 1px solid var(--border);
-        padding: 0.45rem 0.75rem;
-        font-size: 0.8rem;
+        padding: 0.52rem 0.82rem;
+        font-size: 0.78rem;
         cursor: pointer;
+        border-radius: 0.7rem;
+        transition: all 120ms ease;
+      }
+
+      .menu-btn:hover {
+        background: rgba(94, 162, 255, 0.12);
+        border-color: rgba(94, 162, 255, 0.38);
       }
 
       .menu-shell {
@@ -554,23 +691,26 @@
         background: rgba(148, 163, 184, 0.08);
         color: var(--muted);
         border: 1px solid var(--border);
+        border-radius: 0.7rem;
       }
 
       .mode-btn.active {
-        background: rgba(11, 95, 255, 0.12);
+        background: linear-gradient(180deg, rgba(94, 162, 255, 0.18), rgba(47, 110, 246, 0.12));
         color: var(--text);
-        border-color: rgba(96, 165, 250, 0.45);
+        border-color: rgba(94, 162, 255, 0.45);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
       }
 
       .chat-log {
         min-height: 150px;
         border: 1px solid var(--border);
-        border-radius: 0.8rem;
-        background: rgba(15, 23, 42, 0.9);
-        padding: 0.75rem;
+        border-radius: 0.85rem;
+        background: linear-gradient(180deg, rgba(15, 23, 42, 0.82), rgba(9, 13, 25, 0.95));
+        padding: 0.8rem;
         color: var(--muted);
         font-size: 0.88rem;
         line-height: 1.5;
+        box-shadow: inset 0 1px 0 rgba(148, 163, 184, 0.08);
       }
 
       .roadmap-list {
@@ -624,6 +764,165 @@
         font-size: 0.88rem;
         color: var(--muted);
       }
+
+      .agent-status-list {
+        display: grid;
+        gap: 0.6rem;
+      }
+
+      .agent-status-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.8rem;
+        padding: 0.7rem 0.8rem;
+        border-radius: 0.8rem;
+        border: 1px solid var(--border);
+        background: rgba(15, 23, 42, 0.75);
+      }
+
+      .agent-status-card.online {
+        border-color: rgba(34, 197, 94, 0.7);
+        box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.18);
+      }
+
+      .agent-status-card.offline {
+        border-color: rgba(239, 68, 68, 0.7);
+        box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.14);
+      }
+
+      .agent-status-card.in-use {
+        border-color: rgba(250, 204, 21, 0.7);
+        box-shadow: inset 0 0 0 1px rgba(250, 204, 21, 0.18);
+      }
+
+      .agent-status-name {
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: var(--text);
+      }
+
+      .agent-status-dot {
+        width: 0.7rem;
+        height: 0.7rem;
+        border-radius: 50%;
+        display: inline-block;
+        background: var(--muted);
+      }
+
+      .agent-status-card.online .agent-status-dot {
+        background: #22c55e;
+        box-shadow: 0 0 12px rgba(34, 197, 94, 0.8);
+      }
+
+      .agent-status-card.offline .agent-status-dot {
+        background: #ef4444;
+        box-shadow: 0 0 12px rgba(239, 68, 68, 0.75);
+      }
+
+      .agent-status-card.in-use .agent-status-dot {
+        background: #facc15;
+        box-shadow: 0 0 12px rgba(250, 204, 21, 0.75);
+      }
+
+      .chat-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      .chat-thread {
+        min-height: 170px;
+        max-height: 220px;
+        overflow-y: auto;
+        padding: 0.75rem;
+        border: 1px solid var(--border);
+        border-radius: 0.8rem;
+        background: rgba(15, 23, 42, 0.8);
+      }
+
+      .chat-message {
+        margin-bottom: 0.7rem;
+        padding: 0.55rem 0.7rem;
+        border-radius: 0.7rem;
+        line-height: 1.5;
+        font-size: 0.82rem;
+      }
+
+      .chat-message.user {
+        background: rgba(59, 130, 246, 0.12);
+        border: 1px solid rgba(96, 165, 250, 0.28);
+      }
+
+      .chat-message.agent {
+        background: rgba(15, 118, 110, 0.12);
+        border: 1px solid rgba(45, 212, 191, 0.22);
+      }
+
+      .chat-compose {
+        display: flex;
+        gap: 0.5rem;
+      }
+
+      .chat-compose input {
+        flex: 1;
+      }
+
+      .icon-btn {
+        min-width: 2.6rem;
+        padding: 0.65rem 0.75rem;
+      }
+
+      .logs-actions {
+        display: flex;
+        justify-content: flex-end;
+      }
+
+      .log-modal {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(2, 6, 23, 0.72);
+        backdrop-filter: blur(7px);
+        z-index: 100;
+      }
+
+      .log-modal.visible {
+        display: flex;
+      }
+
+      .log-panel {
+        width: min(760px, 90vw);
+        max-height: 82vh;
+        overflow-y: auto;
+        background: rgba(15, 23, 42, 0.96);
+        border: 1px solid var(--border);
+        border-radius: 1rem;
+        padding: 1rem;
+      }
+
+      .log-flow {
+        margin-bottom: 1rem;
+        padding: 0.8rem;
+        border: 1px solid var(--border);
+        border-radius: 0.8rem;
+        background: rgba(148, 163, 184, 0.04);
+      }
+
+      .log-flow h4 {
+        margin: 0 0 0.6rem;
+        font-size: 0.9rem;
+      }
+
+      .log-flow ul {
+        margin: 0;
+        padding-left: 1rem;
+        color: var(--muted);
+        font-size: 0.8rem;
+        line-height: 1.7;
+      }
     </style>
   </head>
   <body>
@@ -637,6 +936,20 @@
         <div class="config-actions">
           <button class="ghost-btn" id="config-cancel" type="button">Cancelar</button>
           <button class="primary-btn" id="config-save" type="button">Guardar</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="plugin-modal" class="config-modal hidden" aria-hidden="true">
+      <div class="config-panel" role="dialog" aria-modal="true" aria-labelledby="plugin-title">
+        <div class="config-header">
+          <h3 id="plugin-title">Plugins</h3>
+          <button class="config-close" id="plugin-close" type="button" aria-label="Cerrar plugins">×</button>
+        </div>
+        <div id="plugin-manager-section" class="plugin-manager-section"></div>
+        <div id="plugin-config-panel" class="plugin-config-panel hidden"></div>
+        <div class="config-actions">
+          <button class="ghost-btn" id="plugin-cancel" type="button">Cerrar</button>
         </div>
       </div>
     </div>
@@ -666,27 +979,20 @@
               <div class="menu-shell">
                 <button class="menu-btn" id="menu-files" type="button" aria-expanded="false">Archivo</button>
                 <div class="menu-dropdown" id="files-menu" role="menu" aria-label="Menú de archivo">
-                  <button class="menu-item" type="button" data-menu-action="open-file">Abrir archivo</button>
-                  <button class="menu-item" type="button" data-menu-action="close-file">Cerrar archivo</button>
-                  <button class="menu-item" type="button" data-menu-action="save-file">Guardar archivo</button>
+                  <button class="menu-item" type="button" data-menu-action="open-file">Abrir archivo (Ctrl+O)</button>
+                  <button class="menu-item" type="button" data-menu-action="close-file">Cerrar archivo (Ctrl+X)</button>
+                  <button class="menu-item" type="button" data-menu-action="save-file">Guardar archivo (Ctrl+W)</button>
                   <button class="menu-item" type="button" data-menu-action="new-file">Nuevo archivo</button>
                   <div class="menu-divider"></div>
-                  <button class="menu-item" type="button" data-menu-action="open-workspace">Abrir espacio de trabajo</button>
+                  <button class="menu-item" type="button" data-menu-action="open-workspace">Abrir espacio de trabajo (Ctrl+A)</button>
                   <button class="menu-item" type="button" data-menu-action="close-workspace">Cerrar espacio de trabajo</button>
                   <div class="menu-divider"></div>
                   <button class="menu-item" type="button" data-menu-action="config">Configuración</button>
                 </div>
               </div>
-              <button class="menu-btn" id="menu-open-workspace" type="button">Workspace</button>
               <button class="menu-btn" id="menu-config" type="button">Configuración</button>
+              <button class="menu-btn" id="menu-plugins" type="button">Plugins</button>
             </div>
-          </div>
-          <div class="shortcut-hints" aria-label="atajos de teclado">
-            <span>Atajos:</span>
-            <span class="shortcut-key">Ctrl+O</span>
-            <span class="shortcut-key">Ctrl+W</span>
-            <span class="shortcut-key">Ctrl+X</span>
-            <span class="shortcut-key">Ctrl+A</span>
           </div>
           <div class="tab-row" id="tab-row"></div>
         </div>
@@ -705,28 +1011,29 @@
             <span class="status-indicator"></span>
             <span id="status-text">Listo</span>
           </div>
-          <div class="toolbar-actions">
-            <button class="ghost-btn" id="open-file-btn" type="button">Abrir archivo</button>
-            <button class="ghost-btn" id="open-workspace-btn" type="button">Abrir espacio de trabajo</button>
-            <button class="primary-btn" id="save-btn" type="button">Guardar</button>
-          </div>
         </div>
       </main>
 
       <aside class="panel">
         <div class="panel-block">
-          <span class="badge">Consola IA</span>
-          <h3>Flujo del agente</h3>
-          <div class="prompt-bar">
-            <input id="prompt-input" class="prompt-input" type="text" placeholder="Ej: crea una función de saludo" aria-label="Prompt de IA" />
-            <button id="prompt-submit" class="prompt-button" type="button">Preguntar</button>
+          <span class="badge">Estado de agentes</span>
+          <h3>Operación en tiempo real</h3>
+          <div class="agent-status-list" id="agent-status-list"></div>
+        </div>
+
+        <div class="panel-block chat-panel">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
+            <span class="badge">Agente de ideas</span>
+            <button class="ghost-btn" id="open-agent-logs" type="button">Logs</button>
           </div>
-          <div class="mode-switch">
-            <button class="mode-btn active" data-mode="ideas" type="button">Ideas</button>
-            <button class="mode-btn" data-mode="execution" type="button">Ejecución</button>
+          <div class="chat-thread" id="chat-log" aria-live="polite">
+            <div class="chat-message agent">Modo ideas listo. Selecciona un archivo para revisar el contexto actual.</div>
           </div>
-          <div class="chat-log" id="chat-log">
-            Modo ideas listo. Selecciona un archivo del workspace para que el agente revise el contexto actual.
+          <div class="chat-compose">
+            <input id="prompt-input" class="prompt-input" type="text" placeholder="Escribe tu solicitud para el agente de ideas" aria-label="Prompt del agente de ideas" />
+            <button class="ghost-btn icon-btn" id="attach-file-btn" type="button" title="Adjuntar archivo">📎</button>
+            <input id="file-attachment-input" type="file" hidden />
+            <button id="prompt-submit" class="prompt-button" type="button">Enviar</button>
           </div>
         </div>
 
@@ -750,12 +1057,22 @@
           </div>
 
           <div class="approval-actions">
-            <button class="approve-btn" type="button">Aprobar</button>
-            <button class="reject-btn" type="button">Solicitar cambios</button>
+            <button class="approve-btn" type="button">Approve diff</button>
+            <button class="reject-btn" type="button">Reject diff</button>
           </div>
-          <div id="approval-status">Esperando revisión</div>
+          <div id="approval-status">Awaiting review</div>
         </div>
       </aside>
+    </div>
+
+    <div id="agent-log-modal" class="log-modal" aria-hidden="true">
+      <div class="log-panel" role="dialog" aria-modal="true" aria-labelledby="agent-log-title">
+        <div class="config-header">
+          <h3 id="agent-log-title">Logs de agentes</h3>
+          <button class="config-close" id="agent-log-close" type="button" aria-label="Cerrar logs">×</button>
+        </div>
+        <div id="agent-log-content"></div>
+      </div>
     </div>
 
     <script>
@@ -781,13 +1098,14 @@
 
       const DEFAULT_AGENT_CONFIG = {
         provider: 'ollama',
-        agent: 'ideas',
-        language: 'typescript',
+        agent: 'principal',
         model: 'llama3.1',
-        baseUrl: 'http://localhost:11434',
+        baseUrl: 'http://chat.nightslayer.com.ar:11434',
         apiKey: '',
         temperature: 0.4
       };
+
+      const AGENT_NAMES = ['ideas', 'planning', 'principal'];
 
       const state = {
         config: null,
@@ -799,7 +1117,39 @@
         selectedSuggestionIndex: 0,
         expandedDirectories: new Set(),
         pendingPatch: '',
-        agentConfig: { ...DEFAULT_AGENT_CONFIG }
+        latestWorkflowTaskId: null,
+        workflowHistory: [],
+        agentConfig: { ...DEFAULT_AGENT_CONFIG },
+        activeAgent: 'principal',
+        agentProfiles: {},
+        modelOptionsByAgent: {},
+        pluginDefinitions: [],
+        pluginProfiles: {},
+        pluginConfigEditor: null,
+        pluginModelOptions: {},
+        agentStatuses: {
+          ideas: 'online',
+          planning: 'online',
+          principal: 'online'
+        },
+        agentLogs: [
+          {
+            flow: 'Idea → Planificación',
+            entries: ['La solicitud del usuario fue recibida y contextualizada.']
+          },
+          {
+            flow: 'Planificación → Principal',
+            entries: ['El plan de trabajo se está priorizando para ejecución.']
+          },
+          {
+            flow: 'Principal → Plugins',
+            entries: ['Los plugins especializados están activos y listos para trabajar.']
+          }
+        ],
+        ideaChatMessages: [
+          { role: 'agent', text: 'Modo ideas listo. Selecciona un archivo para revisar el contexto actual.' }
+        ],
+        attachedFileName: ''
       };
 
       function detectLanguageFromPath(filePath) {
@@ -886,21 +1236,219 @@
         editorCompletions.classList.add('visible');
       }
 
+      function normalizeAgentKey(agentName) {
+        if (!agentName) {
+          return 'principal';
+        }
+        if (agentName === 'orchestrator') {
+          return 'principal';
+        }
+        return AGENT_NAMES.includes(agentName) ? agentName : 'principal';
+      }
+
+      function buildDefaultAgentProfiles() {
+        return AGENT_NAMES.reduce((accumulator, agentName) => {
+          accumulator[agentName] = {
+            ...DEFAULT_AGENT_CONFIG,
+            agent: agentName,
+            provider: 'ollama',
+            model: 'llama3.1',
+            baseUrl: 'http://chat.nightslayer.com.ar:11434'
+          };
+          return accumulator;
+        }, {});
+      }
+
       function getStoredAgentConfig() {
         try {
           const raw = window.localStorage.getItem('nexio-agent-config');
           if (!raw) {
-            return { ...DEFAULT_AGENT_CONFIG };
+            const profiles = buildDefaultAgentProfiles();
+            state.agentProfiles = profiles;
+            state.activeAgent = 'principal';
+            state.agentConfig = { ...profiles.principal };
+            return { ...profiles.principal };
           }
-          return { ...DEFAULT_AGENT_CONFIG, ...JSON.parse(raw) };
+
+          const parsed = JSON.parse(raw);
+          const profiles = parsed.agentProfiles && typeof parsed.agentProfiles === 'object'
+            ? parsed.agentProfiles
+            : { ideas: { ...DEFAULT_AGENT_CONFIG, ...parsed, agent: 'ideas' } };
+
+          const normalizedProfiles = AGENT_NAMES.reduce((accumulator, agentName) => {
+            const existing = profiles[agentName] ?? { ...DEFAULT_AGENT_CONFIG, agent: agentName };
+            accumulator[agentName] = { ...DEFAULT_AGENT_CONFIG, ...existing, agent: agentName };
+            return accumulator;
+          }, {});
+
+          state.agentProfiles = normalizedProfiles;
+          state.activeAgent = normalizeAgentKey(parsed.activeAgent || 'principal');
+          if (!state.agentProfiles[state.activeAgent]) {
+            state.agentProfiles[state.activeAgent] = { ...DEFAULT_AGENT_CONFIG, agent: state.activeAgent };
+          }
+          state.agentConfig = { ...state.agentProfiles[state.activeAgent] };
+          return { ...state.agentProfiles[state.activeAgent] };
         } catch (error) {
           console.warn('Unable to load local agent config', error);
-          return { ...DEFAULT_AGENT_CONFIG };
+          const profiles = buildDefaultAgentProfiles();
+          state.agentProfiles = profiles;
+          state.activeAgent = 'principal';
+          state.agentConfig = { ...profiles.principal };
+          return { ...profiles.principal };
         }
       }
 
       function persistAgentConfig() {
-        window.localStorage.setItem('nexio-agent-config', JSON.stringify(state.agentConfig));
+        const payload = {
+          activeAgent: state.activeAgent,
+          agentProfiles: state.agentProfiles
+        };
+        window.localStorage.setItem('nexio-agent-config', JSON.stringify(payload));
+      }
+
+      function loadWorkflowHistory() {
+        try {
+          const raw = window.localStorage.getItem('nexio-workflow-history');
+          if (!raw) {
+            state.workflowHistory = [];
+            return;
+          }
+          const parsed = JSON.parse(raw);
+          state.workflowHistory = Array.isArray(parsed) ? parsed : [];
+        } catch (error) {
+          console.warn('Unable to load workflow history', error);
+          state.workflowHistory = [];
+        }
+      }
+
+      function saveWorkflowHistory() {
+        window.localStorage.setItem('nexio-workflow-history', JSON.stringify(state.workflowHistory));
+      }
+
+      function pushWorkflowHistoryEntry(status, patchText) {
+        const entry = {
+          taskId: state.latestWorkflowTaskId ?? `task-${Date.now()}`,
+          status,
+          patch: patchText || state.pendingPatch || '',
+          approvedAt: new Date().toISOString(),
+          message: status === 'approved' ? 'Patch approved by user.' : 'Patch rejected by user.'
+        };
+
+        state.workflowHistory = [entry, ...state.workflowHistory].slice(0, 50);
+        saveWorkflowHistory();
+      }
+
+      function getStoredPluginConfig() {
+        try {
+          const raw = window.localStorage.getItem('nexio-plugin-config');
+          if (!raw) {
+            state.pluginProfiles = {};
+            return {};
+          }
+          const parsed = JSON.parse(raw);
+          return parsed && typeof parsed === 'object' ? parsed : {};
+        } catch (error) {
+          console.warn('Unable to load plugin config', error);
+          return {};
+        }
+      }
+
+      function persistPluginConfig() {
+        window.localStorage.setItem('nexio-plugin-config', JSON.stringify(state.pluginProfiles));
+      }
+
+      function getPluginProfile(pluginId) {
+        const defaults = {
+          enabled: true,
+          capabilities: [],
+          provider: 'ollama',
+          model: 'llama3.1',
+          baseUrl: 'http://chat.nightslayer.com.ar:11434',
+          apiKey: '',
+          temperature: 0.4,
+          description: ''
+        };
+        return {
+          ...defaults,
+          ...(state.pluginProfiles[pluginId] ?? {})
+        };
+      }
+
+      async function loadPluginDefinitions() {
+        try {
+          state.pluginDefinitions = await window.electronAPI.listPlugins();
+          state.pluginProfiles = getStoredPluginConfig();
+          state.pluginDefinitions.forEach((plugin) => {
+            if (!state.pluginProfiles[plugin.id]) {
+              state.pluginProfiles[plugin.id] = getPluginProfile(plugin.id);
+            }
+          });
+          persistPluginConfig();
+        } catch (error) {
+          console.warn('Unable to list plugins from backend', error);
+          state.pluginDefinitions = [];
+        }
+      }
+
+      async function listModelsForProvider(profile) {
+        const provider = profile.provider ?? 'ollama';
+        const baseUrl = (profile.baseUrl ?? '').trim();
+        const apiKey = (profile.apiKey ?? '').trim();
+
+        try {
+          if (provider === 'ollama') {
+            const response = await fetch(`${baseUrl.replace(/\/$/, '')}/api/tags`);
+            if (!response.ok) {
+              return [];
+            }
+            const data = await response.json();
+            return Array.isArray(data.models) ? data.models.map((item) => item.name).filter(Boolean) : [];
+          }
+
+          if (provider === 'openai') {
+            const response = await fetch(`${baseUrl.replace(/\/$/, '')}/models`, {
+              headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
+            });
+            if (!response.ok) {
+              return [];
+            }
+            const data = await response.json();
+            return Array.isArray(data.data) ? data.data.map((item) => item.id).filter(Boolean) : [];
+          }
+
+          if (provider === 'gemini') {
+            const url = `${baseUrl.replace(/\/$/, '')}/v1beta/models${apiKey ? `?key=${encodeURIComponent(apiKey)}` : ''}`;
+            const response = await fetch(url);
+            if (!response.ok) {
+              return [];
+            }
+            const data = await response.json();
+            return Array.isArray(data.models) ? data.models.map((item) => item.name).filter(Boolean).map((name) => name.replace('models/', '')) : [];
+          }
+
+          if (provider === 'grok') {
+            const response = await fetch(`${baseUrl.replace(/\/$/, '')}/models`, {
+              headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
+            });
+            if (!response.ok) {
+              return [];
+            }
+            const data = await response.json();
+            return Array.isArray(data.data) ? data.data.map((item) => item.id).filter(Boolean) : [];
+          }
+        } catch (error) {
+          console.warn('Unable to reload models for provider', provider, error);
+        }
+
+        return [];
+      }
+
+      function getProfileForAgent(agentName = state.activeAgent) {
+        if (!state.agentProfiles || !state.agentProfiles[agentName]) {
+          const profiles = buildDefaultAgentProfiles();
+          state.agentProfiles = profiles;
+        }
+        return state.agentProfiles[agentName] ?? { ...DEFAULT_AGENT_CONFIG, agent: agentName };
       }
 
       function renderConfigForm() {
@@ -908,6 +1456,10 @@
         if (!form) {
           return;
         }
+
+        const selectedProfile = getProfileForAgent(state.activeAgent);
+        state.agentConfig = { ...selectedProfile };
+        state.agentProfiles[state.activeAgent] = { ...selectedProfile };
 
         const providerOptions = [
           { value: 'ollama', label: 'Ollama' },
@@ -919,113 +1471,450 @@
         const agentOptions = [
           { value: 'ideas', label: 'Agente de ideas' },
           { value: 'planning', label: 'Agente de planificación' },
-          { value: 'principal', label: 'Agente principal' },
-          { value: 'orchestrator', label: 'Orquestador' }
-        ];
-
-        const languageOptions = [
-          { value: 'typescript', label: 'TypeScript' },
-          { value: 'javascript', label: 'JavaScript' },
-          { value: 'python', label: 'Python' },
-          { value: 'markdown', label: 'Markdown' }
+          { value: 'principal', label: 'Principal / Orquestador' }
         ];
 
         const dynamicFields = {
           ollama: [
-            { key: 'model', label: 'Modelo', type: 'text', placeholder: 'llama3.1' },
-            { key: 'baseUrl', label: 'URL base', type: 'text', placeholder: 'http://localhost:11434' }
+            { key: 'baseUrl', label: 'URL base', type: 'text', placeholder: 'http://chat.nightslayer.com.ar:11434' },
+            { key: 'model', label: 'Modelo', type: 'text', placeholder: 'llama3.1' }
           ],
           openai: [
-            { key: 'model', label: 'Modelo', type: 'text', placeholder: 'gpt-4o-mini' },
             { key: 'apiKey', label: 'API Key', type: 'password', placeholder: 'sk-...' },
-            { key: 'baseUrl', label: 'URL base', type: 'text', placeholder: 'https://api.openai.com/v1' }
+            { key: 'baseUrl', label: 'URL base', type: 'text', placeholder: 'https://api.openai.com/v1' },
+            { key: 'model', label: 'Modelo', type: 'text', placeholder: 'gpt-4o-mini' }
           ],
           gemini: [
-            { key: 'model', label: 'Modelo', type: 'text', placeholder: 'gemini-2.0-flash' },
             { key: 'apiKey', label: 'API Key', type: 'password', placeholder: 'AIza...' },
-            { key: 'baseUrl', label: 'URL base', type: 'text', placeholder: 'https://generativelanguage.googleapis.com' }
+            { key: 'baseUrl', label: 'URL base', type: 'text', placeholder: 'https://generativelanguage.googleapis.com' },
+            { key: 'model', label: 'Modelo', type: 'text', placeholder: 'gemini-2.0-flash' }
           ],
           grok: [
-            { key: 'model', label: 'Modelo', type: 'text', placeholder: 'grok-2-latest' },
             { key: 'apiKey', label: 'API Key', type: 'password', placeholder: 'xai-...' },
-            { key: 'baseUrl', label: 'URL base', type: 'text', placeholder: 'https://api.x.ai/v1' }
+            { key: 'baseUrl', label: 'URL base', type: 'text', placeholder: 'https://api.x.ai/v1' },
+            { key: 'model', label: 'Modelo', type: 'text', placeholder: 'grok-2-latest' }
           ]
         };
 
-        const providerFields = dynamicFields[state.agentConfig.provider] ?? dynamicFields.ollama;
+        const providerFields = dynamicFields[selectedProfile.provider] ?? dynamicFields.ollama;
+        const modelOptions = state.modelOptionsByAgent[state.activeAgent] ?? [];
+        const modelFieldMarkup = `
+          <div class="field-row">
+            <label for="config-model">Modelo</label>
+            ${modelOptions.length > 0
+              ? `<select id="config-model" name="model">
+                  ${modelOptions.map((modelName) => `<option value="${modelName}" ${selectedProfile.model === modelName ? 'selected' : ''}>${modelName}</option>`).join('')}
+                </select>`
+              : `<input id="config-model" name="model" type="text" value="${selectedProfile.model ?? ''}" placeholder="${selectedProfile.provider === 'openai' ? 'gpt-4o-mini' : 'llama3.1'}" />`}
+          </div>
+        `;
 
         form.innerHTML = `
-          <div class="field-grid">
-            <div class="field-row">
-              <label for="config-provider">Proveedor</label>
-              <select id="config-provider" name="provider">
-                ${providerOptions.map((option) => `<option value="${option.value}" ${state.agentConfig.provider === option.value ? 'selected' : ''}>${option.label}</option>`).join('')}
-              </select>
-            </div>
-            <div class="field-row">
-              <label for="config-agent">Agente</label>
-              <select id="config-agent" name="agent">
-                ${agentOptions.map((option) => `<option value="${option.value}" ${state.agentConfig.agent === option.value ? 'selected' : ''}>${option.label}</option>`).join('')}
-              </select>
-            </div>
-            <div class="field-row">
-              <label for="config-language">Idioma / lenguaje</label>
-              <select id="config-language" name="language">
-                ${languageOptions.map((option) => `<option value="${option.value}" ${state.agentConfig.language === option.value ? 'selected' : ''}>${option.label}</option>`).join('')}
-              </select>
-            </div>
-            <div class="field-row">
-              <label for="config-temperature">Temperatura</label>
-              <input id="config-temperature" name="temperature" type="number" min="0" max="1" step="0.1" value="${state.agentConfig.temperature}" />
+          <div class="config-group">
+            <div class="config-group-title">Agente</div>
+            <div class="field-grid">
+              <div class="field-row">
+                <label for="config-agent">Agente activo</label>
+                <select id="config-agent" name="agent">
+                  ${agentOptions.map((option) => `<option value="${option.value}" ${state.activeAgent === option.value ? 'selected' : ''}>${option.label}</option>`).join('')}
+                </select>
+              </div>
+              <div class="field-row">
+                <label for="config-provider">Proveedor</label>
+                <select id="config-provider" name="provider">
+                  ${providerOptions.map((option) => `<option value="${option.value}" ${selectedProfile.provider === option.value ? 'selected' : ''}>${option.label}</option>`).join('')}
+                </select>
+              </div>
             </div>
           </div>
-          <div class="field-grid">
-            ${providerFields.map((field) => `
+
+          <div class="config-group">
+            <div class="config-group-title">Modelo y comportamiento</div>
+            <div class="field-grid">
               <div class="field-row">
-                <label for="config-${field.key}">${field.label}</label>
-                <input
-                  id="config-${field.key}"
-                  name="${field.key}"
-                  type="${field.type}"
-                  value="${state.agentConfig[field.key] ?? ''}"
-                  placeholder="${field.placeholder ?? ''}"
-                />
+                <label for="config-temperature">Temperatura</label>
+                <input id="config-temperature" name="temperature" type="number" min="0" max="1" step="0.1" value="${selectedProfile.temperature}" />
               </div>
-            `).join('')}
+              ${modelFieldMarkup}
+            </div>
+          </div>
+
+          <div class="config-group">
+            <div class="config-group-title">Conexión</div>
+            <div class="field-grid">
+              ${providerFields.map((field) => {
+                if (field.key === 'model') {
+                  return '';
+                }
+                return `
+                  <div class="field-row">
+                    <label for="config-${field.key}">${field.label}</label>
+                    <input
+                      id="config-${field.key}"
+                      name="${field.key}"
+                      type="${field.type}"
+                      value="${selectedProfile[field.key] ?? ''}"
+                      placeholder="${field.placeholder ?? ''}"
+                    />
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+
+          <div class="config-actions-inline">
+            <button class="ghost-btn" id="config-reload-models" type="button">Recargar modelos</button>
           </div>
         `;
 
         const providerSelect = document.getElementById('config-provider');
         providerSelect?.addEventListener('change', (event) => {
-          state.agentConfig.provider = event.target.value;
+          const nextProvider = event.target.value;
+          state.agentProfiles[state.activeAgent] = {
+            ...getProfileForAgent(state.activeAgent),
+            provider: nextProvider,
+            model: nextProvider === 'openai' ? 'gpt-4o-mini' : nextProvider === 'gemini' ? 'gemini-2.0-flash' : nextProvider === 'grok' ? 'grok-2-latest' : 'llama3.1'
+          };
+          state.agentConfig = { ...state.agentProfiles[state.activeAgent] };
+          state.modelOptionsByAgent[state.activeAgent] = [];
           renderConfigForm();
         });
 
         document.getElementById('config-agent')?.addEventListener('change', (event) => {
-          state.agentConfig.agent = event.target.value;
-        });
-
-        document.getElementById('config-language')?.addEventListener('change', (event) => {
-          state.agentConfig.language = event.target.value;
+          state.activeAgent = event.target.value;
+          state.agentConfig = { ...getProfileForAgent(state.activeAgent) };
+          renderConfigForm();
         });
 
         document.getElementById('config-temperature')?.addEventListener('input', (event) => {
           const nextValue = Number(event.target.value);
           if (!Number.isNaN(nextValue)) {
-            state.agentConfig.temperature = nextValue;
+            state.agentProfiles[state.activeAgent] = {
+              ...getProfileForAgent(state.activeAgent),
+              temperature: nextValue
+            };
+            state.agentConfig = { ...state.agentProfiles[state.activeAgent] };
           }
         });
 
+        const modelInput = document.getElementById('config-model');
+        modelInput?.addEventListener('input', (event) => {
+          state.agentProfiles[state.activeAgent] = {
+            ...getProfileForAgent(state.activeAgent),
+            model: event.target.value
+          };
+          state.agentConfig = { ...state.agentProfiles[state.activeAgent] };
+        });
+        modelInput?.addEventListener('change', (event) => {
+          state.agentProfiles[state.activeAgent] = {
+            ...getProfileForAgent(state.activeAgent),
+            model: event.target.value
+          };
+          state.agentConfig = { ...state.agentProfiles[state.activeAgent] };
+        });
+
         providerFields.forEach((field) => {
+          if (field.key === 'model') {
+            return;
+          }
           const input = document.getElementById(`config-${field.key}`);
           input?.addEventListener('input', (event) => {
-            state.agentConfig[field.key] = event.target.value;
+            state.agentProfiles[state.activeAgent] = {
+              ...getProfileForAgent(state.activeAgent),
+              [field.key]: event.target.value
+            };
+            state.agentConfig = { ...state.agentProfiles[state.activeAgent] };
+          });
+        });
+
+        document.getElementById('config-reload-models')?.addEventListener('click', async () => {
+          const selectedProfile = getProfileForAgent(state.activeAgent);
+          const models = await listModelsForProvider(selectedProfile);
+          state.modelOptionsByAgent[state.activeAgent] = models;
+          if (models.length > 0) {
+            state.agentProfiles[state.activeAgent] = {
+              ...selectedProfile,
+              model: models.includes(selectedProfile.model) ? selectedProfile.model : models[0]
+            };
+            state.agentConfig = { ...state.agentProfiles[state.activeAgent] };
+            setStatus(`Modelos cargados para ${state.activeAgent}: ${models.length}`);
+          } else {
+            setStatus('No se encontraron modelos disponibles para este proveedor');
+          }
+          renderConfigForm();
+        });
+      }
+
+      function renderPluginManager() {
+        const container = document.getElementById('plugin-manager-section');
+        if (!container) {
+          return;
+        }
+
+        if (!state.pluginDefinitions.length) {
+          container.innerHTML = `
+            <div class="plugin-manager-header">
+              <h4>Plugins</h4>
+            </div>
+            <div class="plugin-card">
+              <div class="plugin-meta">
+                <strong>No se detectaron plugins en el directorio</strong>
+                <small>Revisa la carpeta src/plugins</small>
+              </div>
+            </div>
+          `;
+          return;
+        }
+
+        container.innerHTML = `
+          <div class="plugin-manager-header">
+            <h4>Plugins activos</h4>
+          </div>
+          <div class="plugin-list">
+            ${state.pluginDefinitions.map((plugin) => {
+              const profile = getPluginProfile(plugin.id);
+              return `
+                <div class="plugin-card">
+                  <div class="plugin-card-main">
+                    <input
+                      class="plugin-toggle"
+                      type="checkbox"
+                      data-plugin-toggle="${plugin.id}"
+                      ${profile.enabled ? 'checked' : ''}
+                    />
+                    <div class="plugin-meta">
+                      <strong>${plugin.name || plugin.id}</strong>
+                      <small>${plugin.type || 'agent'} · ${profile.capabilities && profile.capabilities.length ? profile.capabilities.join(', ') : 'sin capacidades personalizadas'}</small>
+                    </div>
+                  </div>
+                  <div class="plugin-card-actions">
+                    <button class="ghost-btn" type="button" data-plugin-config="${plugin.id}">Configurar</button>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+
+        container.querySelectorAll('[data-plugin-toggle]').forEach((toggle) => {
+          toggle.addEventListener('change', (event) => {
+            const pluginId = event.target.dataset.pluginToggle;
+            const current = getPluginProfile(pluginId);
+            current.enabled = event.target.checked;
+            state.pluginProfiles[pluginId] = current;
+            persistPluginConfig();
+            renderPluginManager();
+          });
+        });
+
+        container.querySelectorAll('[data-plugin-config]').forEach((button) => {
+          button.addEventListener('click', () => {
+            state.pluginConfigEditor = button.dataset.pluginConfig;
+            renderPluginConfigPanel();
           });
         });
       }
 
+      function renderPluginConfigPanel() {
+        const panel = document.getElementById('plugin-config-panel');
+        if (!panel) {
+          return;
+        }
+
+        if (!state.pluginConfigEditor) {
+          panel.classList.add('hidden');
+          panel.innerHTML = '';
+          return;
+        }
+
+        const plugin = state.pluginDefinitions.find((item) => item.id === state.pluginConfigEditor);
+        if (!plugin) {
+          panel.classList.add('hidden');
+          panel.innerHTML = '';
+          return;
+        }
+
+        const profile = getPluginProfile(plugin.id);
+        const capabilitiesText = (profile.capabilities ?? []).join(', ');
+        const supportsModel = plugin.type === 'agent' || plugin.type === 'tool';
+        const providerOptions = [
+          { value: 'ollama', label: 'Ollama' },
+          { value: 'openai', label: 'ChatGPT' },
+          { value: 'gemini', label: 'Gemini' },
+          { value: 'grok', label: 'Grok' }
+        ];
+        const availableModels = state.pluginModelOptions[plugin.id] ?? [];
+
+        panel.classList.remove('hidden');
+        panel.innerHTML = `
+          <div class="config-header">
+            <h3>${plugin.name || plugin.id}</h3>
+            <button class="config-close" type="button" data-plugin-panel-close="${plugin.id}" aria-label="Cerrar configuración del plugin">×</button>
+          </div>
+          <div class="field-grid">
+            <div class="field-row">
+              <label>Capacidades</label>
+              <input id="plugin-capabilities-input" type="text" value="${capabilitiesText}" placeholder="docs, refactor, testing" />
+            </div>
+            <div class="field-row">
+              <label>Estado</label>
+              <select id="plugin-enabled-select">
+                <option value="true" ${profile.enabled ? 'selected' : ''}>Activo</option>
+                <option value="false" ${!profile.enabled ? 'selected' : ''}>Inactivo</option>
+              </select>
+            </div>
+          </div>
+          ${supportsModel ? `
+            <div class="field-grid">
+              <div class="field-row">
+                <label>Proveedor</label>
+                <select id="plugin-provider-select">
+                  ${providerOptions.map((option) => `<option value="${option.value}" ${profile.provider === option.value ? 'selected' : ''}>${option.label}</option>`).join('')}
+                </select>
+              </div>
+              <div class="field-row">
+                <label>Modelo</label>
+                ${availableModels.length > 0
+                  ? `<select id="plugin-model-input">
+                      ${availableModels.map((modelName) => `<option value="${modelName}" ${profile.model === modelName ? 'selected' : ''}>${modelName}</option>`).join('')}
+                    </select>`
+                  : `<input id="plugin-model-input" type="text" value="${profile.model ?? ''}" placeholder="llama3.1" />`}
+              </div>
+              <div class="field-row">
+                <label>URL base</label>
+                <input id="plugin-base-url-input" type="text" value="${profile.baseUrl ?? ''}" placeholder="http://chat.nightslayer.com.ar:11434" />
+              </div>
+              <div class="field-row">
+                <label>API Key</label>
+                <input id="plugin-api-key-input" type="password" value="${profile.apiKey ?? ''}" placeholder="sk-..." />
+              </div>
+            </div>
+          ` : ''}
+          <div class="config-actions-inline">
+            ${supportsModel ? '<button class="ghost-btn" type="button" id="plugin-reload-models">Recargar modelos</button>' : ''}
+            <button class="primary-btn" type="button" id="plugin-save-config">Guardar</button>
+          </div>
+        `;
+
+        panel.querySelector('[data-plugin-panel-close]')?.addEventListener('click', () => {
+          state.pluginConfigEditor = null;
+          renderPluginConfigPanel();
+        });
+
+        const capabilitiesInput = document.getElementById('plugin-capabilities-input');
+        capabilitiesInput?.addEventListener('input', (event) => {
+          const value = event.target.value;
+          const profile = getPluginProfile(plugin.id);
+          profile.capabilities = value.split(',').map((entry) => entry.trim()).filter(Boolean);
+          state.pluginProfiles[plugin.id] = { ...profile };
+        });
+
+        const enabledSelect = document.getElementById('plugin-enabled-select');
+        enabledSelect?.addEventListener('change', (event) => {
+          const profile = getPluginProfile(plugin.id);
+          profile.enabled = event.target.value === 'true';
+          state.pluginProfiles[plugin.id] = { ...profile };
+          persistPluginConfig();
+          renderPluginManager();
+        });
+
+        if (supportsModel) {
+          const providerInput = document.getElementById('plugin-provider-select');
+          providerInput?.addEventListener('change', (event) => {
+            const profile = getPluginProfile(plugin.id);
+            profile.provider = event.target.value;
+            state.pluginProfiles[plugin.id] = { ...profile };
+          });
+
+          const modelInput = document.getElementById('plugin-model-input');
+          modelInput?.addEventListener('input', (event) => {
+            const profile = getPluginProfile(plugin.id);
+            profile.model = event.target.value;
+            state.pluginProfiles[plugin.id] = { ...profile };
+          });
+          modelInput?.addEventListener('change', (event) => {
+            const profile = getPluginProfile(plugin.id);
+            profile.model = event.target.value;
+            state.pluginProfiles[plugin.id] = { ...profile };
+          });
+
+          const baseUrlInput = document.getElementById('plugin-base-url-input');
+          baseUrlInput?.addEventListener('input', (event) => {
+            const profile = getPluginProfile(plugin.id);
+            profile.baseUrl = event.target.value;
+            state.pluginProfiles[plugin.id] = { ...profile };
+          });
+
+          const apiKeyInput = document.getElementById('plugin-api-key-input');
+          apiKeyInput?.addEventListener('input', (event) => {
+            const profile = getPluginProfile(plugin.id);
+            profile.apiKey = event.target.value;
+            state.pluginProfiles[plugin.id] = { ...profile };
+          });
+
+          document.getElementById('plugin-reload-models')?.addEventListener('click', async () => {
+            const profile = getPluginProfile(plugin.id);
+            const models = await listModelsForProvider(profile);
+            if (models.length > 0) {
+              state.pluginModelOptions[plugin.id] = models;
+              profile.model = models.includes(profile.model) ? profile.model : models[0];
+              state.pluginProfiles[plugin.id] = { ...profile };
+              setStatus(`Modelos cargados para ${plugin.name}: ${models.length}`);
+            }
+            renderPluginConfigPanel();
+          });
+        }
+
+        document.getElementById('plugin-save-config')?.addEventListener('click', async () => {
+          const profile = getPluginProfile(plugin.id);
+          profile.capabilities = (document.getElementById('plugin-capabilities-input')?.value ?? '').split(',').map((entry) => entry.trim()).filter(Boolean);
+          if (supportsModel) {
+            profile.provider = document.getElementById('plugin-provider-select')?.value ?? profile.provider;
+            profile.model = document.getElementById('plugin-model-input')?.value ?? profile.model;
+            profile.baseUrl = document.getElementById('plugin-base-url-input')?.value ?? profile.baseUrl;
+            profile.apiKey = document.getElementById('plugin-api-key-input')?.value ?? profile.apiKey;
+            profile.enabled = document.getElementById('plugin-enabled-select')?.value === 'true';
+          }
+          state.pluginProfiles[plugin.id] = { ...profile };
+          persistPluginConfig();
+          if (window.electronAPI?.setPluginConfig) {
+            await window.electronAPI.setPluginConfig(plugin.id, { ...profile });
+          }
+          renderPluginManager();
+          setStatus(`Plugin ${plugin.name} actualizado`);
+        });
+      }
+
+      function openPluginManager() {
+        if (!state.pluginDefinitions.length) {
+          loadPluginDefinitions().then(() => renderPluginManager());
+        } else {
+          renderPluginManager();
+        }
+        const modal = document.getElementById('plugin-modal');
+        if (modal) {
+          modal.classList.remove('hidden');
+          modal.setAttribute('aria-hidden', 'false');
+        }
+      }
+
+      function closePluginManager() {
+        const modal = document.getElementById('plugin-modal');
+        if (modal) {
+          modal.classList.add('hidden');
+          modal.setAttribute('aria-hidden', 'true');
+        }
+      }
+
       function openConfiguration() {
-        state.agentConfig = getStoredAgentConfig();
+        state.agentProfiles = state.agentProfiles && Object.keys(state.agentProfiles).length
+          ? state.agentProfiles
+          : buildDefaultAgentProfiles();
+        state.activeAgent = normalizeAgentKey(state.activeAgent || 'principal');
+        if (!state.agentProfiles[state.activeAgent]) {
+          state.agentProfiles[state.activeAgent] = { ...DEFAULT_AGENT_CONFIG, agent: state.activeAgent };
+        }
+        state.agentConfig = { ...getProfileForAgent(state.activeAgent) };
         renderConfigForm();
         const modal = document.getElementById('config-modal');
         if (modal) {
@@ -1044,27 +1933,124 @@
 
       async function saveConfiguration() {
         persistAgentConfig();
-        const providerLabel = PROVIDER_LABELS[state.agentConfig.provider] ?? 'Proveedor';
+        const currentProfile = getProfileForAgent(state.activeAgent);
+        const providerLabel = PROVIDER_LABELS[currentProfile.provider] ?? 'Proveedor';
         try {
           await window.electronAPI.setAgentConfig({
-            provider: state.agentConfig.provider,
-            agent: state.agentConfig.agent,
-            language: state.agentConfig.language,
-            model: state.agentConfig.model,
-            baseUrl: state.agentConfig.baseUrl,
-            apiKey: state.agentConfig.apiKey,
-            temperature: Number(state.agentConfig.temperature ?? 0.4)
+            provider: currentProfile.provider,
+            agent: currentProfile.agent,
+            model: currentProfile.model,
+            baseUrl: currentProfile.baseUrl,
+            apiKey: currentProfile.apiKey,
+            temperature: Number(currentProfile.temperature ?? 0.4)
           });
         } catch (error) {
           console.warn('Agent config was not persisted to Electron runtime', error);
         }
         setStatus(`Proveedor activo: ${providerLabel}`);
-        chatLog.textContent = `Configuración guardada: ${providerLabel} · Agente ${state.agentConfig.agent} · Lenguaje ${state.agentConfig.language}.`;
+        chatLog.textContent = `Configuración guardada: ${providerLabel} · Agente ${currentProfile.agent}.`;
         closeConfiguration();
       }
 
       function setStatus(message) {
         statusText.textContent = message;
+      }
+
+      function renderAgentStatuses() {
+        const container = document.getElementById('agent-status-list');
+        if (!container) {
+          return;
+        }
+
+        const agents = [
+          { key: 'ideas', label: 'Ideas' },
+          { key: 'planning', label: 'Planificación' },
+          { key: 'principal', label: 'Principal / Orquestador' }
+        ];
+
+        container.innerHTML = agents.map(({ key, label }) => {
+          const status = state.agentStatuses[key] ?? 'online';
+          return `
+            <div class="agent-status-card ${status}">
+              <div>
+                <div class="agent-status-name">${label}</div>
+              </div>
+              <div style="display:flex; align-items:center; gap:0.45rem; color:var(--muted); font-size:0.76rem; text-transform:capitalize;">
+                <span class="agent-status-dot"></span>
+                <span>${status === 'in-use' ? 'en uso' : status === 'offline' ? 'offline' : 'online'}</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      function setAgentStatus(agentKey, status) {
+        state.agentStatuses[agentKey] = status;
+        renderAgentStatuses();
+      }
+
+      function addAgentLog(flow, message) {
+        const existingFlow = state.agentLogs.find((entry) => entry.flow === flow);
+        if (existingFlow) {
+          existingFlow.entries.push(message);
+          if (existingFlow.entries.length > 8) {
+            existingFlow.entries = existingFlow.entries.slice(-8);
+          }
+        } else {
+          state.agentLogs.push({ flow, entries: [message] });
+        }
+        renderAgentLogsModal();
+      }
+
+      function renderAgentLogsModal() {
+        const content = document.getElementById('agent-log-content');
+        if (!content) {
+          return;
+        }
+
+        content.innerHTML = state.agentLogs.map((flowGroup) => `
+          <div class="log-flow">
+            <h4>${flowGroup.flow}</h4>
+            <ul>
+              ${flowGroup.entries.map((entry) => `<li>${entry}</li>`).join('')}
+            </ul>
+          </div>
+        `).join('');
+      }
+
+      function openAgentLogsModal() {
+        const modal = document.getElementById('agent-log-modal');
+        if (!modal) {
+          return;
+        }
+        renderAgentLogsModal();
+        modal.classList.add('visible');
+        modal.setAttribute('aria-hidden', 'false');
+      }
+
+      function closeAgentLogsModal() {
+        const modal = document.getElementById('agent-log-modal');
+        if (!modal) {
+          return;
+        }
+        modal.classList.remove('visible');
+        modal.setAttribute('aria-hidden', 'true');
+      }
+
+      function appendIdeaChatMessage(role, text) {
+        state.ideaChatMessages.push({ role, text });
+        const thread = document.getElementById('chat-log');
+        if (!thread) {
+          return;
+        }
+        thread.innerHTML = '';
+        state.ideaChatMessages.forEach((message) => {
+          const node = document.createElement('div');
+          node.className = `chat-message ${message.role}`;
+          node.textContent = message.text;
+          thread.appendChild(node);
+        });
+        thread.scrollTop = thread.scrollHeight;
       }
 
       function openConfigFromHeader() {
@@ -1077,20 +2063,27 @@
           : 'Review workspace architecture';
 
         setStatus('Running agent workflow...');
-        chatLog.textContent = `Generating ideas and roadmap for ${taskTitle}...`;
+        setAgentStatus('ideas', 'in-use');
+        setAgentStatus('planning', 'in-use');
+        setAgentStatus('principal', 'in-use');
+        addAgentLog('Idea → Planificación', `Solicitud recibida: ${customPrompt || taskTitle}`);
+        chatLog.textContent = `Generando ideas y roadmap para ${taskTitle}...`;
 
         try {
           const result = await window.electronAPI.runAgentWorkflow(taskTitle, state.activeFile, {
             provider: state.agentConfig.provider,
             agent: state.agentConfig.agent,
-            language: state.agentConfig.language,
             model: state.agentConfig.model,
             baseUrl: state.agentConfig.baseUrl,
             apiKey: state.agentConfig.apiKey,
             temperature: Number(state.agentConfig.temperature ?? 0.4)
           });
           if (!result || !result.ok) {
+            setAgentStatus('ideas', 'offline');
+            setAgentStatus('planning', 'offline');
+            setAgentStatus('principal', 'offline');
             chatLog.textContent = result?.message || 'The workflow could not complete.';
+            addAgentLog('Idea → Planificación', 'El flujo falló al ejecutar la revisión del contexto.');
             return;
           }
 
@@ -1122,6 +2115,7 @@
 
           state.suggestions = generatedSuggestions;
           state.pendingPatch = preview.pendingPatch;
+          state.latestWorkflowTaskId = result?.data?.taskId ?? state.latestWorkflowTaskId ?? null;
           renderCompletionSuggestions();
 
           if (state.mode === 'ideas') {
@@ -1130,11 +2124,16 @@
             chatLog.textContent = principalMessage;
           }
 
+          addAgentLog('Planificación → Principal', principalMessage);
+          addAgentLog('Principal → Plugins', `Se ejecutaron ${roadmapTasks.length || 1} tareas del flujo principal.`);
           diffBox.textContent = preview.taskPreview;
           approvalStatus.textContent = result.data?.approvalStatus ?? 'Esperando revisión';
           approvalStatus.style.color = '#e2e8f0';
           diffBox.style.borderColor = 'rgba(148, 163, 184, 0.2)';
           setStatus('Flujo completado');
+          setAgentStatus('ideas', 'online');
+          setAgentStatus('planning', 'online');
+          setAgentStatus('principal', 'online');
 
           if (customPrompt) {
             const trimmed = String(customPrompt).trim();
@@ -1144,7 +2143,11 @@
           }
         } catch (error) {
           console.error(error);
+          setAgentStatus('ideas', 'offline');
+          setAgentStatus('planning', 'offline');
+          setAgentStatus('principal', 'offline');
           chatLog.textContent = 'The AI workflow failed while invoking the desktop runtime.';
+          addAgentLog('Idea → Planificación', 'Hubo un error al ejecutar la tarea del agente.');
           setStatus('Workflow failed');
         }
       }
@@ -1530,7 +2533,9 @@
         }
 
         try {
+          loadWorkflowHistory();
           state.agentConfig = getStoredAgentConfig();
+          await loadPluginDefinitions();
           const config = await window.electronAPI.getConfig();
           state.config = config;
 
@@ -1669,12 +2674,12 @@
         saveConfiguration();
       });
 
-      document.getElementById('menu-open-workspace').addEventListener('click', async () => {
-        await switchWorkspace();
-      });
-
       document.getElementById('menu-config').addEventListener('click', () => {
         openConfigFromHeader();
+      });
+
+      document.getElementById('menu-plugins').addEventListener('click', () => {
+        openPluginManager();
       });
 
       document.querySelectorAll('.menu-item').forEach((button) => {
@@ -1714,17 +2719,6 @@
         }
       });
 
-      document.getElementById('open-file-btn').addEventListener('click', async () => {
-        await openFileFromDialog();
-      });
-
-      document.getElementById('open-workspace-btn').addEventListener('click', async () => {
-        await switchWorkspace();
-      });
-
-      document.getElementById('save-btn').addEventListener('click', async () => {
-        await saveCurrentFile();
-      });
       document.querySelector('.approve-btn').addEventListener('click', () => {
         if (state.pendingPatch) {
           const promptText = String(state.pendingPatch).trim();
@@ -1737,17 +2731,45 @@
           }
         }
 
-        approvalStatus.textContent = 'Aprobado';
+        pushWorkflowHistoryEntry('approved', String(state.pendingPatch || diffBox.textContent || ''));
+        approvalStatus.textContent = 'Approved';
         approvalStatus.style.color = '#bbf7d0';
         diffBox.style.borderColor = 'rgba(34, 197, 94, 0.4)';
-        setStatus('Parche del agente aprobado');
+        setStatus('Patch approved');
       });
 
       document.querySelector('.reject-btn').addEventListener('click', () => {
-        approvalStatus.textContent = 'Solicitar cambios';
+        pushWorkflowHistoryEntry('rejected', String(state.pendingPatch || diffBox.textContent || ''));
+        approvalStatus.textContent = 'Rejected';
         approvalStatus.style.color = '#fecaca';
         diffBox.style.borderColor = 'rgba(239, 68, 68, 0.4)';
-        setStatus('Parche del agente rechazado');
+        setStatus('Patch rejected');
+      });
+
+      const fileAttachmentInput = document.getElementById('file-attachment-input');
+      const attachFileButton = document.getElementById('attach-file-btn');
+      const openAgentLogsButton = document.getElementById('open-agent-logs');
+      const agentLogModal = document.getElementById('agent-log-modal');
+      const agentLogClose = document.getElementById('agent-log-close');
+
+      attachFileButton?.addEventListener('click', () => {
+        fileAttachmentInput?.click();
+      });
+
+      fileAttachmentInput?.addEventListener('change', (event) => {
+        const selectedFile = event.target.files?.[0];
+        state.attachedFileName = selectedFile ? selectedFile.name : '';
+        if (selectedFile) {
+          appendIdeaChatMessage('user', `Archivo adjunto: ${selectedFile.name}`);
+        }
+      });
+
+      openAgentLogsButton?.addEventListener('click', openAgentLogsModal);
+      agentLogClose?.addEventListener('click', closeAgentLogsModal);
+      agentLogModal?.addEventListener('click', (event) => {
+        if (event.target === event.currentTarget) {
+          closeAgentLogsModal();
+        }
       });
 
       promptSubmit.addEventListener('click', async () => {
@@ -1755,9 +2777,15 @@
         if (!promptValue) {
           return;
         }
+        appendIdeaChatMessage('user', promptValue);
+        if (state.attachedFileName) {
+          appendIdeaChatMessage('agent', `Se usará el archivo adjunto ${state.attachedFileName} como contexto adicional.`);
+        }
         chatLog.textContent = `Prompt received: ${promptValue}`;
         await triggerAgentWorkflow(promptValue);
         promptInput.value = '';
+        fileAttachmentInput.value = '';
+        state.attachedFileName = '';
       });
 
       promptInput.addEventListener('keydown', async (event) => {
@@ -1766,9 +2794,15 @@
           if (!promptValue) {
             return;
           }
+          appendIdeaChatMessage('user', promptValue);
+          if (state.attachedFileName) {
+            appendIdeaChatMessage('agent', `Se usará el archivo adjunto ${state.attachedFileName} como contexto adicional.`);
+          }
           chatLog.textContent = `Prompt received: ${promptValue}`;
           await triggerAgentWorkflow(promptValue);
           promptInput.value = '';
+          fileAttachmentInput.value = '';
+          state.attachedFileName = '';
         }
       });
 
@@ -1787,6 +2821,8 @@
       });
 
       window.addEventListener('DOMContentLoaded', () => {
+        renderAgentStatuses();
+        renderAgentLogsModal();
         bootstrap().catch((error) => {
           console.error('Unexpected bootstrap error:', error);
           setStatus('Error crítico de arranque');

@@ -7,6 +7,35 @@ import { resolveLlmRuntimeConfig } from './runtime-config';
 export class OllamaConnector implements LlmConnector {
   public readonly provider = 'ollama' as const;
 
+  public async checkHealth(baseUrl = resolveLlmRuntimeConfig('ollama').ollamaBaseUrl, model = resolveLlmRuntimeConfig('ollama').model): Promise<{ provider: 'ollama'; ok: boolean; baseUrl: string; model?: string; message?: string; }> {
+    const normalizedBaseUrl = (baseUrl ?? '').trim() || resolveLlmRuntimeConfig('ollama').ollamaBaseUrl;
+    const normalizedModel = model || resolveLlmRuntimeConfig('ollama').model;
+
+    try {
+      const response = await fetch(`${normalizedBaseUrl.replace(/\/$/, '')}/api/tags`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      const ok = response.ok;
+      return {
+        provider: 'ollama',
+        ok,
+        baseUrl: normalizedBaseUrl,
+        model: normalizedModel,
+        message: ok ? 'Ollama service is reachable.' : `Ollama health check failed with ${response.status}.`
+      };
+    } catch (error) {
+      return {
+        provider: 'ollama',
+        ok: false,
+        baseUrl: normalizedBaseUrl,
+        model: normalizedModel,
+        message: error instanceof Error ? error.message : 'Unknown Ollama health-check error.'
+      };
+    }
+  }
+
   public async complete(request: LlmRequest): Promise<LlmResponse> {
     const config = resolveLlmRuntimeConfig('ollama');
     const model = request.model ?? config.model;
