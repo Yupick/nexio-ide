@@ -40,9 +40,11 @@ export interface WorkflowHistoryEntry {
 export class ExecutionManager {
   private readonly history: WorkflowHistoryEntry[] = [];
   private readonly historyPath: string;
+  private readonly maxHistoryEntries: number;
 
-  constructor(historyPath = path.join(process.cwd(), '.nexio', 'workflow-history.json')) {
+  constructor(historyPath = path.join(process.cwd(), '.nexio', 'workflow-history.json'), maxHistoryEntries = 50) {
     this.historyPath = historyPath;
+    this.maxHistoryEntries = Number.isFinite(maxHistoryEntries) && maxHistoryEntries > 0 ? maxHistoryEntries : 50;
     this.ensureHistoryStorage();
   }
 
@@ -67,14 +69,24 @@ export class ExecutionManager {
     }
   }
 
+  private trimHistory(): void {
+    if (this.history.length <= this.maxHistoryEntries) {
+      return;
+    }
+
+    this.history.splice(this.maxHistoryEntries);
+  }
+
   private persistHistory(): void {
+    this.trimHistory();
     fs.writeFileSync(this.historyPath, JSON.stringify(this.history, null, 2), 'utf8');
   }
 
   public getHistory(): WorkflowHistoryEntry[] {
     const persisted = this.loadPersistedHistory();
     if (persisted.length && this.history.length === 0) {
-      this.history.push(...persisted);
+      this.history.push(...persisted.reverse());
+      this.trimHistory();
     }
     return [...this.history];
   }
@@ -165,7 +177,8 @@ export class ExecutionManager {
       ...(Object.keys(metadata).length > 0 ? { metadata } : {})
     };
 
-    this.history.push(entry);
+    this.history.unshift(entry);
+    this.trimHistory();
     this.persistHistory();
 
     if (!approval.approved) {

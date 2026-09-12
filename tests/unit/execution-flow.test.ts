@@ -119,4 +119,49 @@ describe('execution flow', () => {
       })
     ]));
   });
+
+  test('rotates workflow history to keep only the latest approved decisions', async () => {
+    const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'nexio-history-'));
+    const historyPath = path.join(tmpRoot, '.nexio', 'workflow-history.json');
+    const manager = new ExecutionManager(historyPath, 2);
+
+    for (let i = 0; i < 5; i += 1) {
+      await manager.executeApprovedTask({
+        id: `task-history-${i}`,
+        title: `History item ${i}`,
+        description: `Persist execution history item ${i}`,
+        priority: 'medium',
+        dependencies: []
+      }, {
+        approved: true,
+        patch: `--- file-${i}.txt\n+++ file-${i}.txt\n@@\n-old\n+new\n`,
+        targetPath: `file-${i}.txt`
+      });
+    }
+
+    expect(manager.getHistory()).toHaveLength(2);
+    expect(manager.getHistory()[0]).toEqual(expect.objectContaining({ taskId: 'task-history-4' }));
+    expect(manager.getHistory()[1]).toEqual(expect.objectContaining({ taskId: 'task-history-3' }));
+  });
+
+  test('rejects a patch when the resolved target is outside the workspace root', async () => {
+    const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'nexio-root-'));
+    const manager = new ExecutionManager(path.join(tmpRoot, '.nexio', 'workflow-history.json'));
+
+    await expect(manager.applyApprovedPatch(
+      {
+        id: 'task-outside-root',
+        title: 'Attempt escape',
+        description: 'Try to apply an approved patch outside the sandbox root.',
+        priority: 'high',
+        dependencies: []
+      },
+      {
+        approved: true,
+        patch: '--- /etc/passwd\n+++ /etc/passwd\n@@\n-root\n+safe\n',
+        targetPath: '../etc/passwd'
+      },
+      tmpRoot
+    )).rejects.toThrow(/outside the sandbox root/);
+  });
 });
