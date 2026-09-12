@@ -38,11 +38,33 @@ describe('workflow runtime', () => {
     expect(state.approvalStatus).toBe('rejected');
   });
 
+  test('produces an approval-ready patch summary from the principal execution', async () => {
+    const runtime = new WorkflowRuntime();
+    const snapshot: ProjectSnapshot = {
+      name: 'nexio-ide',
+      rootPath: process.cwd(),
+      files: ['src/backend/workflow-runtime.ts'],
+      lastUpdated: '2026-09-10T00:00:00Z'
+    };
+
+    const result = await runtime.runWorkflow(snapshot, {
+      id: 'wf-patch-001',
+      title: 'Prepare approval-ready patch',
+      description: 'Create a staged patch preview for review and approval.',
+      priority: 'high',
+      dependencies: []
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.data).toHaveProperty('approvalStatus', 'awaiting_review');
+    expect((result.data as any)?.principalResult?.data?.patchSummary).toEqual(expect.any(Array));
+    expect(String((result.data as any)?.principalResult?.data?.patchSummary?.[0]?.message ?? '')).toContain('processed');
+  });
+
   test('uses the configured runtime provider and exposes the available plugins', async () => {
     const runtime = new WorkflowRuntime({
       provider: 'gemini',
       agent: 'principal',
-      language: 'typescript',
       model: 'gemini-2.0-flash',
       baseUrl: 'https://generativelanguage.googleapis.com',
       apiKey: '',
@@ -79,7 +101,6 @@ describe('workflow runtime', () => {
     const runtime = new WorkflowRuntime({
       provider: 'grok',
       agent: 'orchestrator',
-      language: 'python',
       model: 'grok-2-latest',
       baseUrl: 'https://api.x.ai/v1',
       apiKey: '',
@@ -89,7 +110,7 @@ describe('workflow runtime', () => {
     const snapshot: ProjectSnapshot = {
       name: 'nexio-ide',
       rootPath: process.cwd(),
-      files: ['src/backend/workflow-runtime.ts', 'src/backend/plugin-manager.ts'],
+      files: ['src/backend/workflow-runtime.ts', 'scripts/etl.py'],
       lastUpdated: '2026-09-10T00:00:00Z'
     };
 
@@ -108,5 +129,38 @@ describe('workflow runtime', () => {
       language: 'python'
     });
     expect(String((result.data as any)?.promptContext.renderedPrompt)).toContain('orchestrator');
+  });
+
+  test('routes the workflow through ideas, planning, orchestrator and principal execution stages', async () => {
+    const runtime = new WorkflowRuntime({
+      provider: 'ollama',
+      agent: 'orchestrator',
+      model: 'llama3.1',
+      baseUrl: 'http://chat.nightslayer.com.ar:11434',
+      apiKey: '',
+      temperature: 0.4
+    });
+
+    const snapshot: ProjectSnapshot = {
+      name: 'nexio-ide',
+      rootPath: process.cwd(),
+      files: ['src/backend/workflow-runtime.ts', 'src/agents/planning-agent.ts'],
+      lastUpdated: '2026-09-10T00:00:00Z'
+    };
+
+    const result = await runtime.runWorkflow(snapshot, {
+      id: 'wf-004',
+      title: 'Stage orchestration contract',
+      description: 'Ensure the authoring flow respects ideas → planning → orchestrator → principal execution.',
+      priority: 'high',
+      dependencies: []
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.data).toHaveProperty('ideaResult');
+    expect(result.data).toHaveProperty('planResult');
+    expect(result.data).toHaveProperty('orchestratorResult');
+    expect(result.data).toHaveProperty('principalResult');
+    expect((result.data as any)?.orchestratorResult?.ok).toBe(true);
   });
 });

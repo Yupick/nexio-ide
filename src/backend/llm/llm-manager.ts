@@ -27,6 +27,20 @@ export class LlmManager {
     local: new LocalConnector()
   };
 
+  public async checkProviderHealth(provider: string): Promise<{ provider: string; ok: boolean; baseUrl: string; model?: string; message?: string; }> {
+    const connector = this.connectors[provider];
+    if (!connector || typeof connector.checkHealth !== 'function') {
+      return {
+        provider,
+        ok: false,
+        baseUrl: '',
+        message: `Provider ${provider} does not support health checks.`
+      };
+    }
+
+    return connector.checkHealth();
+  }
+
   public async completeWithFallback(
     request: LlmRequestWithMetadata,
     providers: string[] = ['ollama', 'openai', 'gemini', 'grok', 'local']

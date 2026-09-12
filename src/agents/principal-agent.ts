@@ -2,7 +2,8 @@
  * Principal orchestrator agent.
  * It coordinates tasks and delegates execution to available plugins.
  */
-import type { AgentContext, AgentExecutionResult, AgentTask, PluginInstance } from '../shared/types';
+import { DiffEngine } from '../backend/diff-engine';
+import type { AgentContext, AgentExecutionResult, AgentMessage, AgentTask, PluginInstance } from '../shared/types';
 
 export class PrincipalAgent {
   private readonly plugins: PluginInstance[];
@@ -11,15 +12,88 @@ export class PrincipalAgent {
     this.plugins = plugins;
   }
 
+  public async sendMessage(to: string, from: string, type: AgentMessage['type'], payload: Record<string, unknown>, correlationId?: string): Promise<AgentMessage> {
+    const message: AgentMessage = {
+      id: `message-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      type,
+      from,
+      to,
+      correlationId,
+      payload,
+      createdAt: new Date().toISOString()
+    };
+
+    const plugin = this.plugins.find((entry) => entry.id === to);
+    if (!plugin || typeof plugin.handleMessage !== 'function') {
+      return message;
+    }
+
+    const response = await plugin.handleMessage(message);
+    return response ?? message;
+  }
+
   public registerPlugin(plugin: PluginInstance): void {
     this.plugins.push(plugin);
   }
 
+  public getPluginCapabilities(): Record<string, string[]> {
+    return Object.fromEntries(this.plugins.map((plugin) => [plugin.id, plugin.capabilities ?? []]));
+  }
+
+  public resolveRelevantPlugins(task: AgentTask): PluginInstance[] {
+    const text = `${task.title} ${task.description}`.toLowerCase();
+
+    if (!this.plugins.length) {
+      return [];
+    }
+
+    return this.plugins.filter((plugin) => {
+      const capabilities = plugin.capabilities ?? [];
+      return capabilities.some((capability) => text.includes(capability.toLowerCase()));
+    }).length > 0
+      ? this.plugins.filter((plugin) => {
+          const capabilities = plugin.capabilities ?? [];
+          return capabilities.some((capability) => text.includes(capability.toLowerCase()));
+        })
+      : this.plugins;
+  }
+
   public async execute(context: AgentContext, task: AgentTask): Promise<AgentExecutionResult> {
-    const pluginResults = this.plugins.length
-      ? await Promise.all(this.plugins.map(async (plugin) => {
+    const relevantPlugins = this.resolveRelevantPlugins(task);
+    const selectedPlugins = relevantPlugins.length ? relevantPlugins : this.plugins;
+
+    const messageLog: AgentMessage[] = [];
+    const pluginResults = selectedPlugins.length
+      ? await Promise.all(selectedPlugins.map(async (plugin) => {
           try {
-            return await plugin.execute(task);
+            const dispatchMessage: AgentMessage = {
+              id: `message-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+              type: 'task',
+              from: 'principal-agent',
+              to: plugin.id,
+              correlationId: task.id,
+              payload: { task, context },
+              createdAt: new Date().toISOString()
+            };
+            messageLog.push(dispatchMessage);
+
+            const messageReply = await this.sendMessage(plugin.id, 'principal-agent', 'task', { task, context }, task.id);
+            if (messageReply && messageReply.id) {
+              messageLog.push(messageReply);
+            }
+
+            const executionResult = await plugin.execute(task, context);
+            messageLog.push({
+              id: `message-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+              type: 'result',
+              from: plugin.id,
+              to: 'principal-agent',
+              correlationId: task.id,
+              payload: { result: executionResult },
+              createdAt: new Date().toISOString()
+            });
+
+            return executionResult;
           } catch (error) {
             return {
               ok: false,
@@ -37,17 +111,33 @@ export class PrincipalAgent {
     const successful = pluginResults.filter((result) => result.ok);
     const patchSummary = pluginResults
       .filter((result) => result.data && typeof result.data === 'object')
-      .map((result) => ({
-        plugin: (result.data as Record<string, unknown>).plugin ?? 'unknown',
-        message: result.message
-      }));
+      .map((result, index) => {
+        const pluginName = String((result.data as Record<string, unknown>).plugin ?? selectedPlugins[index]?.id ?? 'unknown');
+        const summaryMessage = `${pluginName} processed ${task.title}. Details: ${result.message}`;
+        const diff = DiffEngine.createApprovalSummary(
+          task.title,
+          pluginName,
+          result.message,
+          `${task.id}-${pluginName}.patch`
+        );
+
+        return {
+          plugin: pluginName,
+          message: summaryMessage,
+          diff,
+          status: 'awaiting_review'
+        };
+      });
 
     return {
       ok: successful.length > 0 || pluginResults.length === 1 && pluginResults[0].ok,
-      message: `Principal agent processed ${task.title} with ${this.plugins.length} plugin(s) and staged the reviewable execution result.`,
+      message: `Principal agent processed ${task.title} with ${selectedPlugins.length} plugin(s) and staged the reviewable execution result.`,
       data: {
         taskId: task.id,
-        executedPlugins: this.plugins.length,
+        executedPlugins: selectedPlugins.length,
+        taskDispatch: selectedPlugins.map((plugin) => plugin.id),
+        availableCapabilities: [...new Set(this.plugins.flatMap((plugin) => plugin.capabilities ?? []))],
+        messages: messageLog,
         results: pluginResults,
         patchSummary,
         contextRoot: context.snapshot.rootPath,

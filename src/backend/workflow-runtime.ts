@@ -2,11 +2,13 @@
  * Runtime state for the complete IDE workflow.
  * Provides a durable operational representation of the ideas -> plan -> execute -> approval flow.
  */
+import fs from 'node:fs';
 import path from 'node:path';
 
 import { IdeasAgent } from '../agents/ideas-agent';
 import { PlanningAgent } from '../agents/planning-agent';
 import { PrincipalAgent } from '../agents/principal-agent';
+import { AgentOrchestrator } from './orchestrator';
 import type { AgentRuntimeSettings } from './config';
 import { PluginManager } from './plugin-manager';
 import { PromptManager } from './llm/prompt-manager';
@@ -21,9 +23,49 @@ export interface WorkflowState {
   createdAt: string;
 }
 
+function detectLanguageFromSnapshot(snapshot: ProjectSnapshot): string {
+  const counts = new Map<string, number>();
+
+  for (const file of snapshot.files) {
+    const extension = file.split('.').pop()?.toLowerCase();
+    if (!extension) {
+      continue;
+    }
+
+    const language =
+      ['ts', 'tsx'].includes(extension) ? 'typescript' :
+      ['js', 'jsx'].includes(extension) ? 'javascript' :
+      extension === 'py' ? 'python' :
+      extension === 'md' ? 'markdown' :
+      null;
+
+    if (!language) {
+      continue;
+    }
+
+    counts.set(language, (counts.get(language) ?? 0) + 1);
+  }
+
+  if (counts.get('python')) {
+    return 'python';
+  }
+  if (counts.get('typescript')) {
+    return 'typescript';
+  }
+  if (counts.get('javascript')) {
+    return 'javascript';
+  }
+  if (counts.get('markdown')) {
+    return 'markdown';
+  }
+
+  return 'typescript';
+}
+
 export class WorkflowRuntime {
   private readonly ideasAgent = new IdeasAgent();
   private readonly planningAgent = new PlanningAgent();
+  private readonly orchestrator = new AgentOrchestrator();
   private readonly principalAgent: PrincipalAgent;
   private readonly pluginManager: PluginManager;
   private readonly promptManager: PromptManager;
@@ -31,15 +73,17 @@ export class WorkflowRuntime {
 
   constructor(runtimeSettings: AgentRuntimeSettings = {
     provider: 'ollama',
-    agent: 'ideas',
-    language: 'typescript',
+    agent: 'principal',
     model: 'llama3.1',
-    baseUrl: 'http://localhost:11434',
+    baseUrl: 'http://chat.nightslayer.com.ar:11434',
     apiKey: '',
     temperature: 0.4
   }) {
     this.runtimeSettings = runtimeSettings;
-    this.pluginManager = new PluginManager(path.resolve(process.cwd(), 'src/plugins'));
+    const pluginDirectory = fs.existsSync(path.resolve(process.cwd(), 'dist', 'src', 'plugins'))
+      ? path.resolve(process.cwd(), 'dist', 'src', 'plugins')
+      : path.resolve(process.cwd(), 'src', 'plugins');
+    this.pluginManager = new PluginManager(pluginDirectory);
     this.promptManager = new PromptManager();
     this.principalAgent = new PrincipalAgent();
   }
@@ -71,6 +115,8 @@ export class WorkflowRuntime {
       }
     };
 
+    const detectedLanguage = detectLanguageFromSnapshot(snapshot);
+
     const pluginInstances = await this.pluginManager.loadAll({
       projectPath: snapshot.rootPath,
       logger: (message: string) => console.log(`[${this.runtimeSettings.agent}] ${message}`)
@@ -81,29 +127,38 @@ export class WorkflowRuntime {
     const promptContext = {
       template: this.runtimeSettings.agent,
       provider: this.runtimeSettings.provider,
-      language: this.runtimeSettings.language,
+      language: detectedLanguage,
       renderedPrompt: this.promptManager.render(this.runtimeSettings.agent, {
         project: snapshot.name,
         task: task.title,
         provider: this.runtimeSettings.provider,
-        language: this.runtimeSettings.language,
+        language: detectedLanguage,
         agent: this.runtimeSettings.agent
       })
     };
 
     const ideaResult = await this.ideasAgent.think(context, task);
     const planResult = await this.planningAgent.plan(context, task);
+    const orchestratorResult = await this.orchestrator.runIdeaWorkflow(snapshot, task);
     const principalResult = await this.principalAgent.execute(context, task);
+    const patchSummary = Array.isArray((principalResult.data as Record<string, unknown> | undefined)?.patchSummary)
+      ? ((principalResult.data as Record<string, unknown>).patchSummary as Array<Record<string, unknown>>)
+      : [];
+    const pendingPatch = patchSummary.length > 0
+      ? patchSummary.map((entry) => String(entry.diff ?? entry.message ?? '')).filter(Boolean).join('\n\n')
+      : principalResult.message;
 
     return {
-      ok: ideaResult.ok && planResult.ok && principalResult.ok,
-      message: `End-to-end workflow reached the approval gate using ${this.runtimeSettings.provider} for agent ${this.runtimeSettings.agent}.`,
+      ok: ideaResult.ok && planResult.ok && orchestratorResult.ok && principalResult.ok,
+      message: `End-to-end workflow reached the approval gate using ${this.runtimeSettings.provider} for agent ${this.runtimeSettings.agent}. The system honored the ideas -> planning -> orchestrator -> principal execution chain.`,
       data: {
         taskId: task.id,
         ideaResult,
         planResult,
+        orchestratorResult,
         principalResult,
         approvalStatus: 'awaiting_review',
+        pendingPatch,
         agentRuntime: { ...this.runtimeSettings },
         availablePlugins: this.pluginManager.getDefinitions().map((plugin) => plugin.id),
         promptContext

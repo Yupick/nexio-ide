@@ -3,15 +3,75 @@
  * This file creates the application window and exposes the desktop workspace IPC contract.
  */
 import { app, BrowserWindow, dialog, ipcMain, Menu } from 'electron';
+import fs from 'node:fs';
 import path from 'node:path';
 
-import { createAppConfig, defaultAgentRuntimeSettings, type AgentRuntimeSettings } from '../backend/config';
+import { createAppConfig, defaultAgentRuntimeSettings, normalizeAgentKey, type AgentRuntimeSettings } from '../backend/config';
+import { PluginManager } from '../backend/plugin-manager';
 import { createProjectSnapshot } from '../backend/project-snapshot';
 import { WorkflowRuntime } from '../backend/workflow-runtime';
 import { listWorkspace, readWorkspaceFile, writeWorkspaceFile } from '../backend/workspace-service';
 
 let workspaceRoot = process.env.NEXIO_WORKSPACE_ROOT ?? process.cwd();
 let agentRuntimeSettings: AgentRuntimeSettings = { ...defaultAgentRuntimeSettings };
+const appConfigPath = path.join(app.getPath('userData'), 'nexio-app-config.json');
+const pluginConfigPath = path.join(app.getPath('userData'), 'nexio-plugin-config.json');
+const pluginDirectory = fs.existsSync(path.resolve(process.cwd(), 'dist', 'src', 'plugins'))
+  ? path.resolve(process.cwd(), 'dist', 'src', 'plugins')
+  : path.resolve(process.cwd(), 'src', 'plugins');
+const pluginManager = new PluginManager(pluginDirectory);
+
+function readPersistedJson<T>(filePath: string, fallback: T): T {
+  try {
+    if (!fs.existsSync(filePath)) {
+      return fallback;
+    }
+    const raw = fs.readFileSync(filePath, 'utf8');
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed as T : fallback;
+  } catch (error) {
+    console.warn('Unable to read persisted config', filePath, error);
+    return fallback;
+  }
+}
+
+function writePersistedJson(filePath: string, value: Record<string, unknown>): void {
+  try {
+    fs.writeFileSync(filePath, JSON.stringify(value, null, 2), 'utf8');
+  } catch (error) {
+    console.warn('Unable to write persisted config', filePath, error);
+  }
+}
+
+function hydrateRuntimeConfig(): void {
+  const persisted = readPersistedJson<{ workspaceRoot?: string; agentRuntime?: Partial<AgentRuntimeSettings> }>(appConfigPath, {});
+  const mergedRuntime = {
+    ...defaultAgentRuntimeSettings,
+    ...(persisted.agentRuntime ?? {})
+  } as AgentRuntimeSettings;
+
+  agentRuntimeSettings = {
+    ...defaultAgentRuntimeSettings,
+    ...mergedRuntime,
+    agent: normalizeAgentKey(mergedRuntime.agent ?? defaultAgentRuntimeSettings.agent),
+    baseUrl: (mergedRuntime.baseUrl || defaultAgentRuntimeSettings.baseUrl).trim() || defaultAgentRuntimeSettings.baseUrl
+  };
+
+  if (persisted.workspaceRoot && typeof persisted.workspaceRoot === 'string') {
+    workspaceRoot = path.resolve(persisted.workspaceRoot);
+  }
+}
+
+function persistRuntimeConfig(): void {
+  writePersistedJson(appConfigPath, {
+    workspaceRoot,
+    agentRuntime: { ...agentRuntimeSettings }
+  });
+}
+
+function persistPluginConfig(pluginProfiles: Record<string, Record<string, unknown>>): void {
+  writePersistedJson(pluginConfigPath, pluginProfiles);
+}
 
 function setWorkspaceRoot(nextRoot: string): string {
   workspaceRoot = path.resolve(nextRoot);
@@ -58,26 +118,56 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  hydrateRuntimeConfig();
+
   ipcMain.handle('app:get-config', () => ({
     environment: 'development',
-    agents: ['ideas', 'planning', 'principal', 'orchestrator'],
+    agents: ['ideas', 'planning', 'principal'],
     llmProviders: ['ollama', 'openai', 'gemini', 'grok', 'local'],
     workspaceRoot,
-    agentRuntime: { ...agentRuntimeSettings },
+    agentRuntime: { ...agentRuntimeSettings, agent: normalizeAgentKey(agentRuntimeSettings.agent) },
     sandbox: createAppConfig(workspaceRoot).sandbox
   }));
 
-  ipcMain.handle('app:get-agent-config', () => ({ ...agentRuntimeSettings }));
+  ipcMain.handle('app:get-agent-config', () => ({ ...agentRuntimeSettings, agent: normalizeAgentKey(agentRuntimeSettings.agent) }));
 
   ipcMain.handle('app:set-agent-config', (_event, nextConfig: Partial<AgentRuntimeSettings>) => {
+    const normalizedAgent = normalizeAgentKey(nextConfig.agent ?? agentRuntimeSettings.agent);
+    const resolvedBaseUrl = (nextConfig.baseUrl ?? agentRuntimeSettings.baseUrl ?? defaultAgentRuntimeSettings.baseUrl).trim() || defaultAgentRuntimeSettings.baseUrl;
     agentRuntimeSettings = {
       ...agentRuntimeSettings,
       ...nextConfig,
       provider: nextConfig.provider ?? agentRuntimeSettings.provider,
-      agent: nextConfig.agent ?? agentRuntimeSettings.agent,
-      language: nextConfig.language ?? agentRuntimeSettings.language
+      agent: normalizedAgent,
+      baseUrl: resolvedBaseUrl
     };
-    return { ...agentRuntimeSettings };
+    persistRuntimeConfig();
+    return { ...agentRuntimeSettings, agent: normalizeAgentKey(agentRuntimeSettings.agent) };
+  });
+
+  ipcMain.handle('plugins:list', () => pluginManager.getDefinitions().map((plugin) => ({
+    ...plugin,
+    capabilities: plugin.capabilities ?? []
+  })));
+
+  ipcMain.handle('plugins:set-config', (_event, pluginId: string, nextConfig: Record<string, unknown>) => {
+    if (!pluginId || !nextConfig) {
+      return null;
+    }
+    const stored = readPersistedJson<Record<string, Record<string, unknown>>>(pluginConfigPath, {});
+    const persisted = {
+      ...stored,
+      [pluginId]: {
+        ...(stored[pluginId] ?? {}),
+        ...nextConfig,
+        id: pluginId
+      }
+    };
+    persistPluginConfig(persisted);
+    return {
+      id: pluginId,
+      ...nextConfig
+    };
   });
 
   ipcMain.handle('workspace:list', () => listWorkspace(workspaceRoot));
