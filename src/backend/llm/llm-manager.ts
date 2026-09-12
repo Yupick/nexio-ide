@@ -53,7 +53,18 @@ export class LlmManager {
 
       try {
         const response = await connector.complete(request);
-        return { ...response, text: `${response.text} [agent:${request.metadata.agent}]` };
+        return {
+          ...response,
+          text: `${response.text} [agent:${request.metadata.agent}]`,
+          metadata: {
+            ...(response.metadata ?? {}),
+            agent: request.metadata.agent,
+            taskId: request.metadata.taskId,
+            snapshotHash: request.metadata.snapshotHash,
+            provider: response.provider,
+            model: request.model ?? response.provider
+          }
+        };
       } catch (error) {
         console.warn(`LLM provider ${provider} failed:`, error);
       }
@@ -62,7 +73,14 @@ export class LlmManager {
     return {
       provider: 'local',
       text: `Fallback response for ${request.prompt} [agent:${request.metadata.agent}]`,
-      usage: { promptTokens: 0, completionTokens: 0 }
+      usage: { promptTokens: 0, completionTokens: 0 },
+      metadata: {
+        agent: request.metadata.agent,
+        taskId: request.metadata.taskId,
+        snapshotHash: request.metadata.snapshotHash,
+        provider: 'local',
+        model: request.model ?? 'local-model'
+      }
     };
   }
 }

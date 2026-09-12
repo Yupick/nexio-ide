@@ -4,6 +4,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 
 import { IdeasAgent } from '../agents/ideas-agent';
 import { PlanningAgent } from '../agents/planning-agent';
@@ -21,6 +22,28 @@ export interface WorkflowState {
   title: string;
   approvalStatus: ApprovalStatus;
   createdAt: string;
+}
+
+function createExecutionMetadata(task: AgentTask, settings: AgentRuntimeSettings, snapshot: ProjectSnapshot): Record<string, string> {
+  const snapshotHash = createHash('sha256')
+    .update(JSON.stringify({
+      name: snapshot.name,
+      rootPath: snapshot.rootPath,
+      files: [...snapshot.files].sort(),
+      lastUpdated: snapshot.lastUpdated
+    }))
+    .digest('hex')
+    .slice(0, 16);
+
+  return {
+    taskId: task.id,
+    agent: settings.agent,
+    provider: settings.provider,
+    model: settings.model,
+    baseUrl: settings.baseUrl,
+    snapshotHash,
+    startedAt: new Date().toISOString()
+  };
 }
 
 function detectLanguageFromSnapshot(snapshot: ProjectSnapshot): string {
@@ -74,7 +97,7 @@ export class WorkflowRuntime {
   constructor(runtimeSettings: AgentRuntimeSettings = {
     provider: 'ollama',
     agent: 'principal',
-    model: 'llama3.1',
+    model: 'qwen2.5-coder:0.5b',
     baseUrl: 'http://chat.nightslayer.com.ar:11434',
     apiKey: '',
     temperature: 0.4
@@ -141,6 +164,7 @@ export class WorkflowRuntime {
     const planResult = await this.planningAgent.plan(context, task);
     const orchestratorResult = await this.orchestrator.runIdeaWorkflow(snapshot, task);
     const principalResult = await this.principalAgent.execute(context, task);
+    const executionMetadata = createExecutionMetadata(task, this.runtimeSettings, snapshot);
     const patchSummary = Array.isArray((principalResult.data as Record<string, unknown> | undefined)?.patchSummary)
       ? ((principalResult.data as Record<string, unknown>).patchSummary as Array<Record<string, unknown>>)
       : [];
@@ -157,6 +181,7 @@ export class WorkflowRuntime {
         planResult,
         orchestratorResult,
         principalResult,
+        executionMetadata,
         approvalStatus: 'awaiting_review',
         pendingPatch,
         agentRuntime: { ...this.runtimeSettings },

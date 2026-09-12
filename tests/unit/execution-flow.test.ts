@@ -86,4 +86,37 @@ describe('execution flow', () => {
       expect.objectContaining({ taskId: 'task-exec-3', status: 'approved' })
     ]));
   });
+
+  test('persists execution metadata alongside approval decisions', async () => {
+    const manager = new ExecutionManager();
+    const result = await manager.executeApprovedTask({
+      id: 'task-exec-4',
+      title: 'Persist execution metadata',
+      description: 'Ensure the execution history includes provider and snapshot correlation metadata.',
+      priority: 'high',
+      dependencies: []
+    }, {
+      approved: true,
+      patch: '--- file.txt\n+++ file.txt\n@@\n-old\n+new\n',
+      targetPath: 'file.txt',
+      metadata: {
+        agent: 'principal',
+        provider: 'ollama',
+        model: 'llama3.1',
+        snapshotHash: 'abc123',
+        taskId: 'task-exec-4'
+      }
+    });
+
+    expect(result.ok).toBe(true);
+    expect(manager.getHistory()).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        taskId: 'task-exec-4',
+        agent: 'principal',
+        provider: 'ollama',
+        model: 'llama3.1',
+        snapshotHash: 'abc123'
+      })
+    ]));
+  });
 });

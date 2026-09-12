@@ -6,7 +6,7 @@ describe('agent config defaults', () => {
 
     expect(defaultAgentRuntimeSettings.agent).toBe('principal');
     expect(defaultAgentRuntimeSettings.baseUrl).toBe('http://chat.nightslayer.com.ar:11434');
-    expect(defaultAgentRuntimeSettings.model).toBe('llama3.1');
+    expect(defaultAgentRuntimeSettings.model).toBe('qwen2.5-coder:0.5b');
     expect(config.agents).toEqual(['ideas', 'planning', 'principal']);
   });
 });

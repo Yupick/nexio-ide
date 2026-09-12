@@ -25,6 +25,11 @@ describe('workflow runtime', () => {
     expect(result.data).toHaveProperty('ideaResult');
     expect(result.data).toHaveProperty('planResult');
     expect(result.data).toHaveProperty('approvalStatus', 'awaiting_review');
+    expect((result.data as any)?.executionMetadata).toMatchObject({
+      taskId: 'wf-001',
+      agent: 'principal',
+      provider: 'ollama'
+    });
   });
 
   test('supports approval and rejection transitions', async () => {

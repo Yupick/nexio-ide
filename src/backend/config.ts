@@ -37,7 +37,7 @@ export function normalizeAgentKey(agent?: string): AgentKey {
 export const defaultAgentRuntimeSettings: AgentRuntimeSettings = {
   provider: 'ollama',
   agent: 'principal',
-  model: 'llama3.1',
+  model: 'qwen2.5-coder:0.5b',
   baseUrl: 'http://chat.nightslayer.com.ar:11434',
   apiKey: '',
   temperature: 0.4

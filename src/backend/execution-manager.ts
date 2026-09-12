@@ -12,6 +12,7 @@ export interface ApprovedExecution {
   approved: boolean;
   patch: string;
   targetPath?: string;
+  metadata?: Record<string, unknown>;
 }
 
 export interface ExecutionResult {
@@ -27,6 +28,13 @@ export interface WorkflowHistoryEntry {
   approvedAt: string;
   message: string;
   targetPath?: string;
+  agent?: string;
+  provider?: string;
+  model?: string;
+  snapshotHash?: string;
+  baseUrl?: string;
+  startedAt?: string;
+  metadata?: Record<string, unknown>;
 }
 
 export class ExecutionManager {
@@ -138,6 +146,7 @@ export class ExecutionManager {
 
   public async executeApprovedTask(task: AgentTask, approval: ApprovedExecution): Promise<ExecutionResult> {
     const approvedAt = new Date().toISOString();
+    const metadata = approval.metadata && typeof approval.metadata === 'object' ? approval.metadata as Record<string, unknown> : {};
     const entry: WorkflowHistoryEntry = {
       taskId: task.id,
       status: approval.approved ? 'approved' : 'rejected',
@@ -146,7 +155,14 @@ export class ExecutionManager {
       message: approval.approved
         ? `Task ${task.id} executed and approved.`
         : `Task ${task.id} was rejected by the user.`,
-      targetPath: approval.targetPath
+      targetPath: approval.targetPath,
+      ...(typeof metadata.agent === 'string' ? { agent: metadata.agent } : {}),
+      ...(typeof metadata.provider === 'string' ? { provider: metadata.provider } : {}),
+      ...(typeof metadata.model === 'string' ? { model: metadata.model } : {}),
+      ...(typeof metadata.snapshotHash === 'string' ? { snapshotHash: metadata.snapshotHash } : {}),
+      ...(typeof metadata.baseUrl === 'string' ? { baseUrl: metadata.baseUrl } : {}),
+      ...(typeof metadata.startedAt === 'string' ? { startedAt: metadata.startedAt } : {}),
+      ...(Object.keys(metadata).length > 0 ? { metadata } : {})
     };
 
     this.history.push(entry);
