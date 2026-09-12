@@ -31,6 +31,14 @@ export interface LlmResponse {
     promptTokens?: number;
     completionTokens?: number;
   };
+  metadata?: {
+    agent?: string;
+    taskId?: string;
+    snapshotHash?: string;
+    model?: string;
+    provider?: string;
+    baseUrl?: string;
+  };
 }
 
 export interface ProviderHealthStatus {

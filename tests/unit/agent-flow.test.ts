@@ -333,7 +333,7 @@ describe('Nexio IDE scaffold', () => {
     expect(result.data).toHaveProperty('roadmap');
   });
 
-  test('llm manager falls back between providers when primary fails', async () => {
+  test('llm manager falls back between providers when primary fails and retains execution metadata', async () => {
     const manager = new LlmManager();
     const response = await manager.completeWithFallback(
       {
@@ -350,6 +350,11 @@ describe('Nexio IDE scaffold', () => {
 
     expect(response.provider).toBe('openai');
     expect(response.text).toContain('Describe');
+    expect(response.metadata).toMatchObject({
+      agent: 'ideas',
+      taskId: 'task-llm',
+      snapshotHash: 'abc123'
+    });
   });
 
   test('workflow preview falls back to the principal result when no suggestions are available', () => {

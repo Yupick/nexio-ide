@@ -12,6 +12,7 @@ export interface ApprovedExecution {
   approved: boolean;
   patch: string;
   targetPath?: string;
+  metadata?: Record<string, unknown>;
 }
 
 export interface ExecutionResult {
@@ -27,14 +28,23 @@ export interface WorkflowHistoryEntry {
   approvedAt: string;
   message: string;
   targetPath?: string;
+  agent?: string;
+  provider?: string;
+  model?: string;
+  snapshotHash?: string;
+  baseUrl?: string;
+  startedAt?: string;
+  metadata?: Record<string, unknown>;
 }
 
 export class ExecutionManager {
   private readonly history: WorkflowHistoryEntry[] = [];
   private readonly historyPath: string;
+  private readonly maxHistoryEntries: number;
 
-  constructor(historyPath = path.join(process.cwd(), '.nexio', 'workflow-history.json')) {
+  constructor(historyPath = path.join(process.cwd(), '.nexio', 'workflow-history.json'), maxHistoryEntries = 50) {
     this.historyPath = historyPath;
+    this.maxHistoryEntries = Number.isFinite(maxHistoryEntries) && maxHistoryEntries > 0 ? maxHistoryEntries : 50;
     this.ensureHistoryStorage();
   }
 
@@ -59,14 +69,24 @@ export class ExecutionManager {
     }
   }
 
+  private trimHistory(): void {
+    if (this.history.length <= this.maxHistoryEntries) {
+      return;
+    }
+
+    this.history.splice(this.maxHistoryEntries);
+  }
+
   private persistHistory(): void {
+    this.trimHistory();
     fs.writeFileSync(this.historyPath, JSON.stringify(this.history, null, 2), 'utf8');
   }
 
   public getHistory(): WorkflowHistoryEntry[] {
     const persisted = this.loadPersistedHistory();
     if (persisted.length && this.history.length === 0) {
-      this.history.push(...persisted);
+      this.history.push(...persisted.reverse());
+      this.trimHistory();
     }
     return [...this.history];
   }
@@ -138,6 +158,7 @@ export class ExecutionManager {
 
   public async executeApprovedTask(task: AgentTask, approval: ApprovedExecution): Promise<ExecutionResult> {
     const approvedAt = new Date().toISOString();
+    const metadata = approval.metadata && typeof approval.metadata === 'object' ? approval.metadata as Record<string, unknown> : {};
     const entry: WorkflowHistoryEntry = {
       taskId: task.id,
       status: approval.approved ? 'approved' : 'rejected',
@@ -146,10 +167,18 @@ export class ExecutionManager {
       message: approval.approved
         ? `Task ${task.id} executed and approved.`
         : `Task ${task.id} was rejected by the user.`,
-      targetPath: approval.targetPath
+      targetPath: approval.targetPath,
+      ...(typeof metadata.agent === 'string' ? { agent: metadata.agent } : {}),
+      ...(typeof metadata.provider === 'string' ? { provider: metadata.provider } : {}),
+      ...(typeof metadata.model === 'string' ? { model: metadata.model } : {}),
+      ...(typeof metadata.snapshotHash === 'string' ? { snapshotHash: metadata.snapshotHash } : {}),
+      ...(typeof metadata.baseUrl === 'string' ? { baseUrl: metadata.baseUrl } : {}),
+      ...(typeof metadata.startedAt === 'string' ? { startedAt: metadata.startedAt } : {}),
+      ...(Object.keys(metadata).length > 0 ? { metadata } : {})
     };
 
-    this.history.push(entry);
+    this.history.unshift(entry);
+    this.trimHistory();
     this.persistHistory();
 
     if (!approval.approved) {

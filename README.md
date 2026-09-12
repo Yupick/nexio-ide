@@ -76,3 +76,8 @@ The testing strategy is documented in [testing_plan.md](testing_plan.md), and th
 
 This branch represents the release-candidate state of Nexio IDE for production readiness review. It includes the validated agent workflow, the approval/rejection UX, the hardening of the sandbox, and the testing evidence required for internal QA.
 
+
+
+## Release Candidate validation
+
+Validated against the live Ollama endpoint at http://chat.nightslayer.com.ar:11434 on 2026-09-12. The workflow executed with the principal agent, preserved task and snapshot metadata, and completed an approval-ready patch cycle within the project workspace.

@@ -4,7 +4,7 @@ import type { LlmProvider, LlmRuntimeConfig } from './types';
 
 const DEFAULT_MODEL_BY_PROVIDER: Record<LlmProvider, string> = {
   openai: 'gpt-4o-mini',
-  ollama: 'llama3.1',
+  ollama: 'qwen2.5-coder:0.5b',
   gemini: 'gemini-2.0-flash',
   grok: 'grok-2-latest',
   local: 'local-model'
