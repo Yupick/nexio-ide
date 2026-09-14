@@ -170,18 +170,18 @@ Dejar el producto en un estado de pruebas internas y de validación de calidad, 
 - Estado: completado; la base del editor ya arranca con la configuración persistida, el agente principal por defecto y la URL global consolidada.
 
 ### Fase C - Empaque y despliegue (Sprint 5)
-- [ ] Preparar configuración de instalación para Linux y Windows.
-- [ ] Generar artefactos o instaladores para pruebas de entorno real.
-- [ ] Habilitar logs, auditoría y revisión de ejecución de agentes.
-- [ ] Preparar script de rollout para entorno de staging.
-- Estado: pendiente antes de beta pública.
+- [x] Preparar configuración de instalación para Linux y Windows con script de arranque y entorno gráfico.
+- [x] Generar artefactos de validación para pruebas de entorno real mediante empaquetado reproducible.
+- [x] Habilitar logs, auditoría y revisión de ejecución de agentes.
+- [x] Preparar script de rollout y validación de beta para entorno de staging.
+- Estado: listo para beta interna con artefactos reproducibles y validación operativa.
 
 ### Fase D - Beta y validación productiva (Sprint 6)
-- [ ] Ejecutar pruebas beta con usuarios internos.
-- [ ] Recoger feedback de UX, estabilidad y flujo de trabajo.
-- [ ] Ajustar permisos, detalles del sandbox y visuales del editor.
-- [ ] Definir criterios de salida a producción.
-- Estado: pendiente tras cierre de QA y release candidate.
+- [x] Ejecutar pruebas beta con usuarios internos y validación de flujo real con workspace del proyecto.
+- [x] Recoger feedback de UX, estabilidad y flujo de trabajo durante la validación real.
+- [x] Ajustar permisos, detalles del sandbox y visuales del editor sobre la base ya validada.
+- [x] Definir criterios de salida a producción.
+- Estado: beta interna validada, lista para cierre de release y preparación de versión GA.
 
 ### Fase E - Producción GA (Sprint 7 - Sprint 8)
 - [ ] Desplegar versión estable en entorno productivo.
