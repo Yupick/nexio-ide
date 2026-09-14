@@ -168,4 +168,30 @@ describe('workflow runtime', () => {
     expect(result.data).toHaveProperty('principalResult');
     expect((result.data as any)?.orchestratorResult?.ok).toBe(true);
   });
+
+  test('records runtime audit events for the whole workflow lifecycle', async () => {
+    const runtime = new WorkflowRuntime();
+    const snapshot: ProjectSnapshot = {
+      name: 'nexio-ide',
+      rootPath: process.cwd(),
+      files: ['src/backend/workflow-runtime.ts', 'src/agents/planning-agent.ts'],
+      lastUpdated: '2026-09-10T00:00:00Z'
+    };
+
+    const result = await runtime.runWorkflow(snapshot, {
+      id: 'wf-audit-001',
+      title: 'Audit final workflow execution',
+      description: 'Ensure the runtime produces a verifiable event trail for QA and support.',
+      priority: 'high',
+      dependencies: []
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.data).toHaveProperty('auditTrail');
+    expect((result.data as any)?.auditTrail).toEqual(expect.arrayContaining([
+      expect.objectContaining({ stage: 'workflow-started' }),
+      expect.objectContaining({ stage: 'idea-generation' }),
+      expect.objectContaining({ stage: 'workflow-complete' })
+    ]));
+  });
 });
