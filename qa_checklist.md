@@ -33,5 +33,17 @@ Validar que el IDE ofrece una experiencia de uso estable, comprensible y segura 
 - [x] Documentación de uso y onboarding lista
 - [x] Checklist de aprobación del equipo
 
+## QA real y validación operativa
+- [x] Validación del flujo real del IDE con snapshot del proyecto actual
+- [x] Check de ejecución del runtime con provider real y metadata de auditoría
+- [x] Validación de aprobación/rechazo del diff en flujo real
+- [x] Revisión del sandbox y acceso fuera del workspace
+
+## Empaque y beta
+- [x] Script de arranque del desktop para Linux con entorno gráfico y guardas de validación
+- [x] Generación de artefacto de packaging reproducible para entorno beta
+- [x] Verificación del proyecto compilando y ejecutando la validación del workflow real
+- [x] Checklist de preparación para beta interna y revisión de calidad del producto
+
 ## Observaciones
-El proyecto ya está en una etapa de pruebas internas con base funcional validada. La siguiente fase recomendada es cerrar la validación del caso real de tarea y dejar la versión release candidate con evidencia documentada.
+La base funcional queda validada para una etapa beta interna con evidencia real del flujo de trabajo, empaquetado reproducible y control de seguridad del workspace. El siguiente cierre recomendado es la finalización del release GA con monitoreo y observabilidad operativa.

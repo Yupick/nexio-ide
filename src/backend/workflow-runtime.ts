@@ -138,6 +138,17 @@ export class WorkflowRuntime {
       }
     };
 
+    const auditTrail: Array<Record<string, unknown>> = [];
+    const pushAudit = (stage: string, metadata: Record<string, unknown> = {}): void => {
+      auditTrail.push({
+        stage,
+        timestamp: new Date().toISOString(),
+        ...metadata
+      });
+    };
+
+    pushAudit('workflow-started', { taskId: task.id, agent: this.runtimeSettings.agent });
+
     const detectedLanguage = detectLanguageFromSnapshot(snapshot);
 
     const pluginInstances = await this.pluginManager.loadAll({
@@ -161,9 +172,17 @@ export class WorkflowRuntime {
     };
 
     const ideaResult = await this.ideasAgent.think(context, task);
+    pushAudit('idea-generation', { taskId: task.id, ok: ideaResult.ok });
+
     const planResult = await this.planningAgent.plan(context, task);
+    pushAudit('planning', { taskId: task.id, ok: planResult.ok });
+
     const orchestratorResult = await this.orchestrator.runIdeaWorkflow(snapshot, task);
+    pushAudit('orchestrator', { taskId: task.id, ok: orchestratorResult.ok });
+
     const principalResult = await this.principalAgent.execute(context, task);
+    pushAudit('principal-execution', { taskId: task.id, ok: principalResult.ok, pluginCount: principalResult.data?.executedPlugins ?? 0 });
+
     const executionMetadata = createExecutionMetadata(task, this.runtimeSettings, snapshot);
     const patchSummary = Array.isArray((principalResult.data as Record<string, unknown> | undefined)?.patchSummary)
       ? ((principalResult.data as Record<string, unknown>).patchSummary as Array<Record<string, unknown>>)
@@ -172,8 +191,11 @@ export class WorkflowRuntime {
       ? patchSummary.map((entry) => String(entry.diff ?? entry.message ?? '')).filter(Boolean).join('\n\n')
       : principalResult.message;
 
+    const resultOk = ideaResult.ok && planResult.ok && orchestratorResult.ok && principalResult.ok;
+    pushAudit('workflow-complete', { taskId: task.id, ok: resultOk });
+
     return {
-      ok: ideaResult.ok && planResult.ok && orchestratorResult.ok && principalResult.ok,
+      ok: resultOk,
       message: `End-to-end workflow reached the approval gate using ${this.runtimeSettings.provider} for agent ${this.runtimeSettings.agent}. The system honored the ideas -> planning -> orchestrator -> principal execution chain.`,
       data: {
         taskId: task.id,
@@ -186,7 +208,8 @@ export class WorkflowRuntime {
         pendingPatch,
         agentRuntime: { ...this.runtimeSettings },
         availablePlugins: this.pluginManager.getDefinitions().map((plugin) => plugin.id),
-        promptContext
+        promptContext,
+        auditTrail
       }
     };
   }
