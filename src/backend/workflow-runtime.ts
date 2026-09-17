@@ -100,7 +100,8 @@ export class WorkflowRuntime {
     model: 'qwen2.5-coder:0.5b',
     baseUrl: 'http://chat.nightslayer.com.ar:11434',
     apiKey: '',
-    temperature: 0.4
+    temperature: 0.4,
+    executionMode: 'manual'
   }) {
     this.runtimeSettings = runtimeSettings;
     const pluginDirectory = fs.existsSync(path.resolve(process.cwd(), 'dist', 'src', 'plugins'))
@@ -122,6 +123,74 @@ export class WorkflowRuntime {
 
   public setApprovalState(state: WorkflowState, approvalStatus: ApprovalStatus): void {
     state.approvalStatus = approvalStatus;
+  }
+
+  private buildAutonomousFileContent(task: AgentTask): string {
+    const title = task.title.toLowerCase();
+    const htmlPage = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${task.title}</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: #0f172a;
+        color: #e2e8f0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+      }
+      .card {
+        width: min(720px, 90vw);
+        background: rgba(15, 23, 42, 0.8);
+        border: 1px solid rgba(148, 163, 184, 0.3);
+        border-radius: 16px;
+        padding: 2rem;
+        box-shadow: 0 15px 30px rgba(15, 23, 42, 0.3);
+      }
+      h1 { margin: 0 0 0.75rem; }
+      p { line-height: 1.6; }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <h1>${task.title}</h1>
+      <p>${task.description}</p>
+      <p>Este archivo fue generado automáticamente dentro del workspace activo por el runtime del editor.</p>
+    </main>
+  </body>
+</html>`;
+
+    if (title.includes('html') || title.includes('page') || title.includes('web')) {
+      return htmlPage;
+    }
+
+    return `# ${task.title}\n\n${task.description}\n`;
+  }
+
+  private applyAutonomousApproval(snapshot: ProjectSnapshot, task: AgentTask, principalResult: AgentExecutionResult): { approvalStatus: ApprovalStatus; pendingPatch: string; createdFiles: string[] } {
+    if (this.runtimeSettings.executionMode !== 'autonomous') {
+      return {
+        approvalStatus: 'awaiting_review',
+        pendingPatch: principalResult.message,
+        createdFiles: []
+      };
+    }
+
+    const targetFile = path.resolve(snapshot.rootPath, 'index.html');
+    const content = this.buildAutonomousFileContent(task);
+    fs.mkdirSync(path.dirname(targetFile), { recursive: true });
+    fs.writeFileSync(targetFile, content, 'utf8');
+
+    return {
+      approvalStatus: 'approved',
+      pendingPatch: content,
+      createdFiles: [path.relative(snapshot.rootPath, targetFile)]
+    };
   }
 
   public async runWorkflow(snapshot: ProjectSnapshot, task: AgentTask): Promise<AgentExecutionResult> {
@@ -187,16 +256,17 @@ export class WorkflowRuntime {
     const patchSummary = Array.isArray((principalResult.data as Record<string, unknown> | undefined)?.patchSummary)
       ? ((principalResult.data as Record<string, unknown>).patchSummary as Array<Record<string, unknown>>)
       : [];
-    const pendingPatch = patchSummary.length > 0
+    const pendingPatchBase = patchSummary.length > 0
       ? patchSummary.map((entry) => String(entry.diff ?? entry.message ?? '')).filter(Boolean).join('\n\n')
       : principalResult.message;
 
+    const automatedOutcome = this.applyAutonomousApproval(snapshot, task, principalResult);
     const resultOk = ideaResult.ok && planResult.ok && orchestratorResult.ok && principalResult.ok;
-    pushAudit('workflow-complete', { taskId: task.id, ok: resultOk });
+    pushAudit('workflow-complete', { taskId: task.id, ok: resultOk, approvalStatus: automatedOutcome.approvalStatus });
 
     return {
       ok: resultOk,
-      message: `End-to-end workflow reached the approval gate using ${this.runtimeSettings.provider} for agent ${this.runtimeSettings.agent}. The system honored the ideas -> planning -> orchestrator -> principal execution chain.`,
+      message: `End-to-end workflow reached the ${automatedOutcome.approvalStatus === 'approved' ? 'autonomous execution' : 'approval'} gate using ${this.runtimeSettings.provider} for agent ${this.runtimeSettings.agent}. The system honored the ideas -> planning -> orchestrator -> principal execution chain.`,
       data: {
         taskId: task.id,
         ideaResult,
@@ -204,8 +274,9 @@ export class WorkflowRuntime {
         orchestratorResult,
         principalResult,
         executionMetadata,
-        approvalStatus: 'awaiting_review',
-        pendingPatch,
+        approvalStatus: automatedOutcome.approvalStatus,
+        pendingPatch: automatedOutcome.pendingPatch || pendingPatchBase,
+        createdFiles: automatedOutcome.createdFiles,
         agentRuntime: { ...this.runtimeSettings },
         availablePlugins: this.pluginManager.getDefinitions().map((plugin) => plugin.id),
         promptContext,

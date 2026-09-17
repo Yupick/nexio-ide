@@ -743,6 +743,114 @@
         min-height: 130px;
       }
 
+      .patch-summary {
+        display: grid;
+        gap: 0.45rem;
+        padding: 0.7rem 0.8rem;
+        margin-bottom: 0.8rem;
+        border-radius: 0.8rem;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        background: rgba(15, 23, 42, 0.6);
+      }
+
+      .patch-summary-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.8rem;
+        color: var(--muted);
+        font-size: 0.78rem;
+      }
+
+      .patch-summary-row strong {
+        color: var(--text);
+        font-weight: 700;
+        text-align: right;
+      }
+
+      .patch-chip {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.28rem 0.55rem;
+        border-radius: 999px;
+        border: 1px solid rgba(148, 163, 184, 0.24);
+        background: rgba(15, 118, 110, 0.12);
+        color: #b7f3eb;
+        font-size: 0.72rem;
+        font-weight: 700;
+      }
+
+      .patch-mode {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 120px;
+        padding: 0.32rem 0.6rem;
+        border-radius: 999px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        border: 1px solid rgba(96, 165, 250, 0.28);
+        background: rgba(59, 130, 246, 0.12);
+        color: #bfdbfe;
+      }
+
+      .patch-mode.change {
+        border-color: rgba(45, 212, 191, 0.34);
+        background: rgba(45, 212, 191, 0.11);
+        color: #a7f3d0;
+      }
+
+      .patch-mode.suggestion {
+        border-color: rgba(250, 204, 21, 0.36);
+        background: rgba(250, 204, 21, 0.11);
+        color: #fde68a;
+      }
+
+      .history-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+      }
+
+      .history-item {
+        padding: 0.65rem 0.7rem;
+        border-radius: 0.75rem;
+        border: 1px solid var(--border);
+        background: rgba(15, 23, 42, 0.7);
+        display: grid;
+        gap: 0.25rem;
+      }
+
+      .history-item.approved {
+        border-color: rgba(34, 197, 94, 0.4);
+      }
+
+      .history-item.rejected {
+        border-color: rgba(239, 68, 68, 0.4);
+      }
+
+      .history-item-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.75rem;
+        align-items: center;
+        color: var(--text);
+        font-size: 0.75rem;
+        font-weight: 700;
+      }
+
+      .history-item-message {
+        color: var(--muted);
+        font-size: 0.76rem;
+        line-height: 1.5;
+      }
+
+      .history-item-time {
+        color: var(--muted);
+        font-size: 0.68rem;
+      }
+
       .approval-actions {
         display: flex;
         gap: 0.5rem;
@@ -763,6 +871,49 @@
         margin-top: 0.8rem;
         font-size: 0.88rem;
         color: var(--muted);
+      }
+
+      .confirm-modal {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(2, 6, 23, 0.75);
+        backdrop-filter: blur(6px);
+        z-index: 120;
+      }
+
+      .confirm-modal.visible {
+        display: flex;
+      }
+
+      .confirm-dialog {
+        width: min(440px, 92vw);
+        background: rgba(15, 23, 42, 0.96);
+        border: 1px solid rgba(148, 163, 184, 0.24);
+        border-radius: 1rem;
+        padding: 1rem 1rem 0.8rem;
+        box-shadow: 0 25px 80px rgba(2, 6, 23, 0.45);
+      }
+
+      .confirm-dialog h4 {
+        margin: 0 0 0.7rem;
+        color: var(--text);
+        font-size: 1.05rem;
+      }
+
+      .confirm-dialog p {
+        margin: 0 0 0.8rem;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      .confirm-dialog .confirm-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.6rem;
+        margin-top: 0.6rem;
       }
 
       .agent-status-list {
@@ -1048,7 +1199,33 @@
         </div>
 
         <div class="panel-block">
-          <h3>Revisión de diff</h3>
+          <h3>Propuesta de cambio</h3>
+          <div class="patch-summary">
+            <div class="patch-summary-row">
+              <span>Archivo</span>
+              <strong id="patch-target-file">src/example.ts</strong>
+            </div>
+            <div class="patch-summary-row">
+              <span>Tipo</span>
+              <span class="patch-mode change" id="patch-mode">Cambio propuesto</span>
+            </div>
+            <div class="patch-summary-row">
+              <span>Acción</span>
+              <strong id="patch-action-type">Modificación</strong>
+            </div>
+            <div class="patch-summary-row">
+              <span>Impacto</span>
+              <strong id="patch-impact">1 archivo · 7 líneas</strong>
+            </div>
+            <div class="patch-summary-row">
+              <span>Riesgo</span>
+              <span class="patch-chip" id="patch-risk">Bajo</span>
+            </div>
+            <div class="patch-summary-row">
+              <span>Resumen</span>
+              <strong id="patch-summary-text">Se actualizará el bloque actual para ajustar la lógica del archivo activo.</strong>
+            </div>
+          </div>
           <div class="diff-box" id="diff-box">--- src/example.ts
 +++ src/example.ts
 @@
@@ -1057,12 +1234,29 @@
           </div>
 
           <div class="approval-actions">
-            <button class="approve-btn" type="button">Approve diff</button>
-            <button class="reject-btn" type="button">Reject diff</button>
+            <button class="approve-btn" type="button">Aplicar cambios</button>
+            <button class="reject-btn" type="button">Descartar propuesta</button>
           </div>
-          <div id="approval-status">Awaiting review</div>
+          <div id="approval-status">Pendiente de revisión</div>
+        </div>
+
+        <div class="panel-block">
+          <h3>Historial de decisiones</h3>
+          <div id="workflow-history-list" class="history-list" aria-live="polite"></div>
         </div>
       </aside>
+    </div>
+
+    <div id="approval-confirm-modal" class="confirm-modal" aria-hidden="true">
+      <div class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="approval-confirm-title">
+        <h4 id="approval-confirm-title">Aplicar cambios en el workspace</h4>
+        <p id="approval-confirm-copy">Se modificará el archivo activo dentro del workspace. Revisa la propuesta antes de confirmar.</p>
+        <div class="confirm-actions">
+          <button class="ghost-btn" id="approval-confirm-cancel" type="button">Cancelar</button>
+          <button class="ghost-btn" id="approval-confirm-discard" type="button">Descartar propuesta</button>
+          <button class="prompt-button" id="approval-confirm-apply" type="button">Aplicar cambios</button>
+        </div>
+      </div>
     </div>
 
     <div id="agent-log-modal" class="log-modal" aria-hidden="true">
@@ -1102,7 +1296,8 @@
         model: 'llama3.1',
         baseUrl: 'http://chat.nightslayer.com.ar:11434',
         apiKey: '',
-        temperature: 0.4
+        temperature: 0.4,
+        executionMode: 'manual'
       };
 
       const AGENT_NAMES = ['ideas', 'planning', 'principal'];
@@ -1336,6 +1531,73 @@
 
         state.workflowHistory = [entry, ...state.workflowHistory].slice(0, 50);
         saveWorkflowHistory();
+      }
+
+      function buildNaturalPatchSummary(patchText, targetFile) {
+        const cleanText = String(patchText || '').trim();
+        if (!cleanText) {
+          return 'No hay cambios propuestos para este archivo en este momento.';
+        }
+
+        const lines = cleanText.split('\n');
+        const added = lines.filter((line) => line.startsWith('+') && !line.startsWith('+++')).length;
+        const removed = lines.filter((line) => line.startsWith('-') && !line.startsWith('---')).length;
+        const fileLabel = targetFile || 'el archivo activo';
+
+        if (added > 0 && removed === 0) {
+          return `Se añadirá contenido en ${fileLabel} para ampliar la lógica actual con ${added} líneas nuevas.`;
+        }
+
+        if (removed > 0 && added === 0) {
+          return `Se eliminará parte del contenido en ${fileLabel} para limpiar y simplificar la lógica actual.`;
+        }
+
+        if (added > removed) {
+          return `Se actualizará ${fileLabel} para incorporar ${added} cambios nuevos y mantener el bloque actual consistente.`;
+        }
+
+        return `Se ajustará ${fileLabel} para revisar ${added + removed} líneas y alinear la lógica con el flujo actual.`;
+      }
+
+      function updatePatchSummary() {
+        const patchText = String(state.pendingPatch || diffBox.textContent || '').trim();
+        const targetFile = state.activeFile || 'workspace';
+        const diffLines = patchText.split('\n').filter((line) => line.startsWith('+') || line.startsWith('-')).length;
+        const hasPatch = patchText.length > 0;
+        const changeAction = patchText.includes('+++') || patchText.includes('---') ? 'Modificación' : 'Revisión';
+        const risk = diffLines > 18 ? 'Medio' : 'Bajo';
+        const modeBadgeEl = document.getElementById('patch-mode');
+        const modeLabel = hasPatch ? 'Cambio propuesto' : 'Sugerencia';
+        const modeClass = hasPatch ? 'change' : 'suggestion';
+
+        const targetFileEl = document.getElementById('patch-target-file');
+        const actionTypeEl = document.getElementById('patch-action-type');
+        const impactEl = document.getElementById('patch-impact');
+        const riskEl = document.getElementById('patch-risk');
+        const summaryEl = document.getElementById('patch-summary-text');
+
+        if (targetFileEl) targetFileEl.textContent = targetFile;
+        if (actionTypeEl) actionTypeEl.textContent = changeAction;
+        if (impactEl) impactEl.textContent = `${Math.max(1, diffLines || 1)} líneas`;
+        if (riskEl) {
+          riskEl.textContent = risk;
+          riskEl.style.background = risk === 'Medio' ? 'rgba(250, 204, 21, 0.12)' : 'rgba(15, 118, 110, 0.12)';
+          riskEl.style.color = risk === 'Medio' ? '#fde68a' : '#b7f3eb';
+        }
+        if (summaryEl) {
+          summaryEl.textContent = buildNaturalPatchSummary(patchText, targetFile);
+        }
+        if (modeBadgeEl) {
+          modeBadgeEl.textContent = modeLabel;
+          modeBadgeEl.className = `patch-mode ${modeClass}`;
+        }
+
+        const confirmCopy = document.getElementById('approval-confirm-copy');
+        if (confirmCopy) {
+          confirmCopy.textContent = hasPatch
+            ? `Se modificará ${targetFile} dentro del workspace. Revisa la propuesta antes de confirmar.`
+            : `Se sugerirá una mejora para ${targetFile} dentro del workspace. No se escribirá ningún archivo hasta que la confirmes.`;
+        }
       }
 
       function getStoredPluginConfig() {
@@ -1942,7 +2204,8 @@
             model: currentProfile.model,
             baseUrl: currentProfile.baseUrl,
             apiKey: currentProfile.apiKey,
-            temperature: Number(currentProfile.temperature ?? 0.4)
+            temperature: Number(currentProfile.temperature ?? 0.4),
+            executionMode: currentProfile.executionMode ?? 'manual'
           });
         } catch (error) {
           console.warn('Agent config was not persisted to Electron runtime', error);
@@ -2127,7 +2390,9 @@
           addAgentLog('Planificación → Principal', principalMessage);
           addAgentLog('Principal → Plugins', `Se ejecutaron ${roadmapTasks.length || 1} tareas del flujo principal.`);
           diffBox.textContent = preview.taskPreview;
-          approvalStatus.textContent = result.data?.approvalStatus ?? 'Esperando revisión';
+          state.pendingPatch = preview.pendingPatch;
+          updatePatchSummary();
+          approvalStatus.textContent = result.data?.approvalStatus ?? 'Pendiente de revisión';
           approvalStatus.style.color = '#e2e8f0';
           diffBox.style.borderColor = 'rgba(148, 163, 184, 0.2)';
           setStatus('Flujo completado');
@@ -2534,6 +2799,7 @@
 
         try {
           loadWorkflowHistory();
+          renderWorkflowHistory();
           state.agentConfig = getStoredAgentConfig();
           await loadPluginDefinitions();
           const config = await window.electronAPI.getConfig();
@@ -2719,31 +2985,120 @@
         }
       });
 
-      document.querySelector('.approve-btn').addEventListener('click', () => {
-        if (state.pendingPatch) {
-          const promptText = String(state.pendingPatch).trim();
-          if (promptText && editor.value) {
-            const cursor = editor.selectionStart ?? editor.value.length;
-            const before = editor.value.slice(0, cursor);
-            const after = editor.value.slice(cursor);
-            editor.value = `${before}${promptText}${after}`;
-            editor.focus();
-          }
+      function openApprovalConfirmModal(mode = 'apply') {
+        const modal = document.getElementById('approval-confirm-modal');
+        const title = document.getElementById('approval-confirm-title');
+        const copy = document.getElementById('approval-confirm-copy');
+        const applyButton = document.getElementById('approval-confirm-apply');
+        const discardButton = document.getElementById('approval-confirm-discard');
+
+        if (!modal || !title || !copy || !applyButton || !discardButton) return;
+
+        if (mode === 'discard') {
+          title.textContent = 'Descartar propuesta';
+          copy.textContent = `La propuesta para ${state.activeFile || 'el archivo activo'} se descartará y no se escribirá ningún cambio en el workspace.`;
+          applyButton.textContent = 'Descartar';
+          applyButton.dataset.mode = 'discard';
+          discardButton.style.display = 'none';
+        } else {
+          title.textContent = 'Aplicar cambios en el workspace';
+          copy.textContent = `Se modificará ${state.activeFile || 'el archivo activo'} dentro del workspace. Revisa la propuesta antes de confirmar.`;
+          applyButton.textContent = 'Aplicar cambios';
+          applyButton.dataset.mode = 'apply';
+          discardButton.style.display = 'inline-flex';
         }
 
-        pushWorkflowHistoryEntry('approved', String(state.pendingPatch || diffBox.textContent || ''));
-        approvalStatus.textContent = 'Approved';
-        approvalStatus.style.color = '#bbf7d0';
-        diffBox.style.borderColor = 'rgba(34, 197, 94, 0.4)';
-        setStatus('Patch approved');
+        modal.classList.add('visible');
+        modal.setAttribute('aria-hidden', 'false');
+      }
+
+      function closeApprovalConfirmModal() {
+        const modal = document.getElementById('approval-confirm-modal');
+        if (!modal) return;
+        modal.classList.remove('visible');
+        modal.setAttribute('aria-hidden', 'true');
+      }
+
+      async function applyApprovedPatch() {
+        const patchText = String(state.pendingPatch || diffBox.textContent || '').trim();
+        const targetPath = state.activeFile || 'README.md';
+
+        try {
+          const result = await window.electronAPI.approveDiff(
+            state.latestWorkflowTaskId || `task-${Date.now()}`,
+            patchText,
+            targetPath,
+            {
+              agent: state.activeAgent || state.agentConfig.agent,
+              provider: state.agentConfig.provider,
+              model: state.agentConfig.model,
+              baseUrl: state.agentConfig.baseUrl,
+              startedAt: new Date().toISOString(),
+              snapshotHash: state.latestWorkflowTaskId || `snapshot-${Date.now()}`
+            }
+          );
+
+          if (!result || !result.ok) {
+            throw new Error(result?.message || 'La propuesta no pudo aplicarse.');
+          }
+
+          if (state.activeFile) {
+            const refreshed = await window.electronAPI.readFile(state.activeFile);
+            editor.value = refreshed;
+            const activeTab = getActiveTab();
+            if (activeTab) {
+              activeTab.originalContent = refreshed;
+              activeTab.dirty = false;
+            }
+          }
+
+          pushWorkflowHistoryEntry('approved', patchText);
+          approvalStatus.textContent = 'Cambio aplicado';
+          approvalStatus.style.color = '#bbf7d0';
+          diffBox.style.borderColor = 'rgba(34, 197, 94, 0.4)';
+          setStatus('Cambio aplicado');
+        } catch (error) {
+          console.error('Failed to approve patch', error);
+          approvalStatus.textContent = 'No se pudo aplicar';
+          approvalStatus.style.color = '#fca5a5';
+          diffBox.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+          setStatus('No se pudo aplicar');
+        } finally {
+          closeApprovalConfirmModal();
+        }
+      }
+
+      document.querySelector('.approve-btn').addEventListener('click', () => {
+        openApprovalConfirmModal();
+      });
+
+      document.getElementById('approval-confirm-apply')?.addEventListener('click', async () => {
+        const mode = document.getElementById('approval-confirm-apply')?.dataset.mode || 'apply';
+        if (mode === 'discard') {
+          pushWorkflowHistoryEntry('rejected', String(state.pendingPatch || diffBox.textContent || ''));
+          approvalStatus.textContent = 'Cambio descartado';
+          approvalStatus.style.color = '#fecaca';
+          diffBox.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+          setStatus('Cambio descartado');
+          closeApprovalConfirmModal();
+          return;
+        }
+
+        await applyApprovedPatch();
+      });
+
+      document.getElementById('approval-confirm-cancel')?.addEventListener('click', () => {
+        closeApprovalConfirmModal();
+      });
+
+      document.getElementById('approval-confirm-modal')?.addEventListener('click', (event) => {
+        if (event.target === event.currentTarget) {
+          closeApprovalConfirmModal();
+        }
       });
 
       document.querySelector('.reject-btn').addEventListener('click', () => {
-        pushWorkflowHistoryEntry('rejected', String(state.pendingPatch || diffBox.textContent || ''));
-        approvalStatus.textContent = 'Rejected';
-        approvalStatus.style.color = '#fecaca';
-        diffBox.style.borderColor = 'rgba(239, 68, 68, 0.4)';
-        setStatus('Patch rejected');
+        openApprovalConfirmModal('discard');
       });
 
       const fileAttachmentInput = document.getElementById('file-attachment-input');

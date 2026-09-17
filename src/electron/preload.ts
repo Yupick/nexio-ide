@@ -13,6 +13,7 @@ export type ElectronApi = {
   selectWorkspace: () => Promise<string | null>;
   setWorkspaceRoot: (rootPath: string) => Promise<string | null>;
   runAgentWorkflow: (taskTitle: string, targetFile?: string | null, agentConfig?: Record<string, unknown>) => Promise<{ ok: boolean; message: string; data?: Record<string, unknown> }>;
+  approveDiff: (taskId: string, patchText: string, targetPath?: string | null, metadata?: Record<string, unknown>) => Promise<{ ok: boolean; message: string; data?: Record<string, unknown> }>;
 };
 
 const electronApi: ElectronApi = {
@@ -27,7 +28,8 @@ const electronApi: ElectronApi = {
   selectFile: () => ipcRenderer.invoke('app:select-file'),
   selectWorkspace: () => ipcRenderer.invoke('app:select-workspace'),
   setWorkspaceRoot: (rootPath: string) => ipcRenderer.invoke('workspace:set-root', rootPath),
-  runAgentWorkflow: (taskTitle: string, targetFile?: string | null, agentConfig?: Record<string, unknown>) => ipcRenderer.invoke('agent:run-workflow', taskTitle, targetFile ?? null, agentConfig ?? null)
+  runAgentWorkflow: (taskTitle: string, targetFile?: string | null, agentConfig?: Record<string, unknown>) => ipcRenderer.invoke('agent:run-workflow', taskTitle, targetFile ?? null, agentConfig ?? null),
+  approveDiff: (taskId: string, patchText: string, targetPath?: string | null, metadata?: Record<string, unknown>) => ipcRenderer.invoke('app:approve-diff', taskId, patchText, targetPath ?? null, metadata ?? {})
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronApi);
