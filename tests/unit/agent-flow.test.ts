@@ -333,6 +333,125 @@ describe('Nexio IDE scaffold', () => {
     expect(result.data).toHaveProperty('roadmap');
   });
 
+  test('orchestrator creates execution threads with planning state and dependency ownership', async () => {
+    const orchestrator = new AgentOrchestrator();
+    const task: AgentTask = {
+      id: 'task-thread-1',
+      title: 'Refine agent execution flow',
+      description: 'Coordinate ideas, planning, orchestration, and specialized execution under approval control.',
+      priority: 'high',
+      dependencies: []
+    };
+
+    const result = await orchestrator.runIdeaWorkflow(
+      {
+        name: 'nexio-ide',
+        rootPath: '/workspace',
+        files: ['src/agents/ideas-agent.ts', 'src/backend/orchestrator.ts'],
+        lastUpdated: '2026-09-10T00:00:00Z'
+      },
+      task
+    );
+
+    expect(result.ok).toBe(true);
+    const threads = Array.isArray((result.data as any)?.executionThreads) ? (result.data as any).executionThreads : [];
+    expect(threads.length).toBeGreaterThan(0);
+    expect(threads[0]).toMatchObject({
+      status: 'pending',
+      owner: 'orchestrator',
+      delegateTo: expect.any(String)
+    });
+    expect(Array.isArray(threads[0].dependencies)).toBe(true);
+  });
+
+  test('editor plugin handles code edits with an approval-ready patch', async () => {
+    const agent = new PrincipalAgent([
+      {
+        id: 'editor-plugin',
+        name: 'Editor Plugin',
+        type: 'agent',
+        version: '0.1.0',
+        capabilities: ['edit', 'code', 'implement', 'fix', 'create'],
+        async init() {},
+        async execute(task: AgentTask) {
+          return {
+            ok: true,
+            message: `Editor plugin prepared a patch for ${task.title}.`,
+            data: {
+              plugin: 'editor-plugin',
+              targetPath: 'src/demo.ts',
+              patch: '--- src/demo.ts\n+++ src/demo.ts\n@@\n+export const demo = true;\n',
+              approvalRequired: true
+            }
+          };
+        }
+      } as any
+    ]);
+
+    const context: AgentContext = {
+      snapshot: {
+        name: 'nexio-ide',
+        rootPath: '/workspace',
+        files: ['src/demo.ts'],
+        lastUpdated: '2026-09-10T00:00:00Z'
+      },
+      sandbox: {
+        allowedRoots: ['/workspace'],
+        readOnly: true
+      }
+    };
+
+    const task: AgentTask = {
+      id: 'task-edit-approval-1',
+      title: 'Implement the demo helper',
+      description: 'Create a helper function and prepare the patch for review before writing it to disk.',
+      priority: 'high',
+      dependencies: []
+    };
+
+    const result = await agent.execute(context, task);
+
+    expect(result.ok).toBe(true);
+    expect((result.data as any)?.taskDispatch).toEqual(['editor-plugin']);
+    expect((result.data as any)?.patchSummary[0]).toMatchObject({ plugin: 'editor-plugin' });
+  });
+
+  test('workflow runtime stages LLM calls across the agent pipeline instead of returning one direct chat answer', async () => {
+    const { WorkflowRuntime } = await import('../../src/backend/workflow-runtime');
+    const runtime = new WorkflowRuntime({
+      provider: 'ollama',
+      agent: 'principal',
+      model: 'qwen2.5-coder:0.5b',
+      baseUrl: 'http://chat.nightslayer.com.ar:11434',
+      apiKey: '',
+      temperature: 0.4
+    });
+
+    const result = await runtime.runWorkflow(
+      {
+        name: 'nexio-ide',
+        rootPath: process.cwd(),
+        files: ['src/ui/index.html', 'src/backend/orchestrator.ts'],
+        lastUpdated: '2026-09-10T00:00:00Z'
+      },
+      {
+        id: 'task-stage-chain',
+        title: 'Genera una página HTML básica',
+        description: 'Elige la ruta del flujo de ideas a planificación a ejecución sin devolver código directo al chat del usuario.',
+        priority: 'high',
+        dependencies: [],
+        metadata: {
+          prompt: 'Genera una página HTML básica',
+          language: 'html'
+        }
+      }
+    );
+
+    expect(result.ok).toBe(true);
+    expect(Array.isArray((result.data as any)?.stageLlmResponses)).toBe(true);
+    expect((result.data as any)?.stageLlmResponses.map((entry: any) => entry.stage)).toEqual(expect.arrayContaining(['ideas', 'planning', 'orchestrator', 'principal']));
+  }, 90000);
+
   test('llm manager falls back between providers when primary fails and retains execution metadata', async () => {
     const manager = new LlmManager();
     const response = await manager.completeWithFallback(
@@ -356,6 +475,45 @@ describe('Nexio IDE scaffold', () => {
       snapshotHash: 'abc123'
     });
   });
+
+  test('workflow runtime uses the configured LLM provider for a real user prompt', async () => {
+    const { WorkflowRuntime } = await import('../../src/backend/workflow-runtime');
+    const runtime = new WorkflowRuntime({
+      provider: 'ollama',
+      agent: 'principal',
+      model: 'qwen2.5-coder:0.5b',
+      baseUrl: 'http://chat.nightslayer.com.ar:11434',
+      apiKey: '',
+      temperature: 0.4
+    });
+
+    const result = await runtime.runWorkflow(
+      {
+        name: 'nexio-ide',
+        rootPath: process.cwd(),
+        files: ['src/ui/index.html', 'src/backend/workflow-runtime.ts'],
+        lastUpdated: '2026-09-10T00:00:00Z'
+      },
+      {
+        id: 'task-llm-real',
+        title: '¿Cuál es el siguiente paso para validar la conexión con Ollama?',
+        description: 'Verifica que la entrada del chat realmente llama al modelo configurado.',
+        priority: 'high',
+        dependencies: [],
+        metadata: {
+          prompt: '¿Cuál es el siguiente paso para validar la conexión con Ollama?',
+          language: 'typescript'
+        }
+      }
+    );
+
+    expect(result.ok).toBe(true);
+    expect(result.data).toHaveProperty('llmResponse');
+    expect(result.data?.llmResponse).toMatchObject({
+      provider: 'ollama',
+      text: expect.any(String)
+    });
+  }, 30000);
 
   test('workflow preview falls back to the principal result when no suggestions are available', () => {
     const result = buildWorkflowPreview({
