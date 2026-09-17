@@ -2,6 +2,7 @@
  * Runtime configuration for the app shell and agent system.
  */
 export type AgentKey = 'ideas' | 'planning' | 'principal' | 'orchestrator';
+export type AgentExecutionMode = 'manual' | 'autonomous';
 
 export interface AgentRuntimeSettings {
   provider: 'ollama' | 'openai' | 'gemini' | 'grok' | 'local';
@@ -10,6 +11,7 @@ export interface AgentRuntimeSettings {
   baseUrl: string;
   apiKey: string;
   temperature: number;
+  executionMode?: AgentExecutionMode;
 }
 
 export interface AppConfig {
@@ -40,7 +42,8 @@ export const defaultAgentRuntimeSettings: AgentRuntimeSettings = {
   model: 'qwen2.5-coder:0.5b',
   baseUrl: 'http://chat.nightslayer.com.ar:11434',
   apiKey: '',
-  temperature: 0.4
+  temperature: 0.4,
+  executionMode: 'manual'
 };
 
 export function createAppConfig(workspaceRoot: string): AppConfig {
