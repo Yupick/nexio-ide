@@ -777,17 +777,30 @@
         color: var(--text);
       }
 
+      .diff-summary {
+        margin: 0 0 0.7rem;
+        color: var(--muted);
+        font-size: 0.8rem;
+        line-height: 1.5;
+        padding: 0.65rem 0.75rem;
+        border-radius: 0.75rem;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        background: rgba(148, 163, 184, 0.05);
+        font-weight: 600;
+      }
+
       .diff-box {
         background: rgba(15, 23, 42, 0.95);
-        border: 1px solid var(--border);
-        border-radius: 0.8rem;
-        padding: 0.8rem;
+        border: 1px solid rgba(148, 163, 184, 0.24);
+        border-radius: 0.85rem;
+        padding: 0.85rem;
         color: var(--text);
         font-family: 'JetBrains Mono', 'Fira Code', monospace;
         font-size: 0.82rem;
-        line-height: 1.5;
+        line-height: 1.55;
         white-space: pre-wrap;
         min-height: 130px;
+        box-shadow: inset 0 1px 0 rgba(148, 163, 184, 0.08);
       }
 
       .approval-actions {
@@ -796,13 +809,29 @@
         margin-top: 0.75rem;
       }
 
+      .approval-actions button {
+        flex: 1;
+        border: 1px solid transparent;
+        border-radius: 0.75rem;
+        padding: 0.7rem 0.8rem;
+        font-weight: 700;
+        transition: transform 0.15s ease, filter 0.15s ease, border-color 0.15s ease;
+      }
+
+      .approval-actions button:hover {
+        transform: translateY(-1px);
+        filter: brightness(1.04);
+      }
+
       .approve-btn {
         background: rgba(34, 197, 94, 0.16);
+        border-color: rgba(34, 197, 94, 0.4);
         color: #dcfce7;
       }
 
       .reject-btn {
         background: rgba(239, 68, 68, 0.16);
+        border-color: rgba(239, 68, 68, 0.4);
         color: #fecaca;
       }
 
@@ -810,6 +839,7 @@
         margin-top: 0.8rem;
         font-size: 0.88rem;
         color: var(--muted);
+        font-weight: 600;
       }
 
       .agent-status-list {
@@ -1112,7 +1142,8 @@
         </div>
 
         <div class="panel-block">
-          <h3>Revisión de diff</h3>
+          <h3>Resumen del cambio</h3>
+          <div class="diff-summary" id="diff-summary">Revisa qué cambiará antes de aplicar la propuesta.</div>
           <div class="diff-box" id="diff-box">--- src/example.ts
 +++ src/example.ts
 @@
@@ -1121,10 +1152,10 @@
           </div>
 
           <div class="approval-actions">
-            <button class="approve-btn" type="button">Approve diff</button>
-            <button class="reject-btn" type="button">Reject diff</button>
+            <button class="approve-btn" type="button">Aplicar cambios</button>
+            <button class="reject-btn" type="button">Descartar cambios</button>
           </div>
-          <div id="approval-status">Awaiting review</div>
+          <div id="approval-status">Esperando revisión</div>
         </div>
       </aside>
     </div>
@@ -1285,6 +1316,22 @@
           pendingPatch,
           suggestionsText
         };
+      }
+
+      function updateDiffSummary() {
+        const summaryElement = document.getElementById('diff-summary');
+        if (!summaryElement) {
+          return;
+        }
+
+        const patchText = normalizePatchText(state.pendingPatch || diffBox.textContent || '');
+        if (!patchText) {
+          summaryElement.textContent = 'No hay cambios pendientes para revisar.';
+          return;
+        }
+
+        const lineCount = patchText.split(/\r?\n/).length;
+        summaryElement.textContent = `Se aplicarán ${Math.max(1, lineCount)} líneas de cambio.`;
       }
 
       function applySuggestionAtSelection(suggestion) {
@@ -1501,14 +1548,14 @@
       async function approvePendingPatch() {
         const patchText = normalizePatchText(state.pendingPatch || diffBox.textContent || '');
         if (!patchText) {
-          setStatus('No hay patch listo para aprobar');
-          approvalStatus.textContent = 'No patch';
+          setStatus('No hay cambios listos para aplicar');
+          approvalStatus.textContent = 'Sin cambios';
           return false;
         }
 
         let targetPath = state.activeFile;
         if (!targetPath) {
-          const requestedPath = window.prompt('Guardar patch en archivo', 'nuevo-archivo.txt');
+          const requestedPath = window.prompt('Guardar cambios en archivo', 'nuevo-archivo.txt');
           if (!requestedPath) {
             return false;
           }
@@ -1538,18 +1585,22 @@
           renderTabs();
           updateActiveFileLabel();
           pushWorkflowHistoryEntry('approved', patchText);
-          approvalStatus.textContent = 'Approved';
+          approvalStatus.textContent = 'Aprobado';
           approvalStatus.style.color = '#bbf7d0';
           diffBox.style.borderColor = 'rgba(34, 197, 94, 0.4)';
-          setStatus(`Patch aprobado y guardado en ${targetPath}`);
+          const summaryElement = document.getElementById('diff-summary');
+          if (summaryElement) {
+            summaryElement.textContent = `Cambios aplicados en ${targetPath}.`;
+          }
+          setStatus(`Cambios aplicados en ${targetPath}`);
           recordDebug('patch-approved', { target: targetPath, size: nextContent.length });
           return true;
         } catch (error) {
           console.error('approvePendingPatch failed', error);
           recordDebug('patch-approved-error', { target: targetPath, error: String(error) });
-          approvalStatus.textContent = 'Approval failed';
+          approvalStatus.textContent = 'Error al aplicar';
           approvalStatus.style.color = '#fecaca';
-          setStatus('No se pudo guardar el patch aprobado');
+          setStatus('No se pudieron guardar los cambios aplicados');
           return false;
         }
       }
@@ -2427,6 +2478,7 @@
           addAgentLog('Planificación → Principal', principalMessage);
           addAgentLog('Principal → Plugins', `Se ejecutaron ${roadmapTasks.length || 1} tareas del flujo principal.`);
           diffBox.textContent = preview.taskPreview;
+          updateDiffSummary();
           approvalStatus.textContent = result.data?.approvalStatus ?? 'Esperando revisión';
           approvalStatus.style.color = '#e2e8f0';
           diffBox.style.borderColor = 'rgba(148, 163, 184, 0.2)';
@@ -3138,10 +3190,10 @@
 
       document.querySelector('.reject-btn').addEventListener('click', () => {
         pushWorkflowHistoryEntry('rejected', String(state.pendingPatch || diffBox.textContent || ''));
-        approvalStatus.textContent = 'Rejected';
+        approvalStatus.textContent = 'Descartado';
         approvalStatus.style.color = '#fecaca';
         diffBox.style.borderColor = 'rgba(239, 68, 68, 0.4)';
-        setStatus('Patch rejected');
+        setStatus('Cambios descartados');
         recordDebug('patch-rejected', { patchLength: String(state.pendingPatch || diffBox.textContent || '').length });
       });
 
