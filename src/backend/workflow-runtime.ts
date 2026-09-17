@@ -12,8 +12,10 @@ import { PrincipalAgent } from '../agents/principal-agent';
 import { AgentOrchestrator } from './orchestrator';
 import type { AgentRuntimeSettings } from './config';
 import { PluginManager } from './plugin-manager';
+import { LlmManager } from './llm/llm-manager';
 import { PromptManager } from './llm/prompt-manager';
 import type { AgentContext, AgentExecutionResult, AgentTask, ProjectSnapshot, Roadmap } from '../shared/types';
+import type { LlmResponse } from './llm/types';
 
 export type ApprovalStatus = 'awaiting_review' | 'approved' | 'rejected';
 
@@ -91,6 +93,7 @@ export class WorkflowRuntime {
   private readonly orchestrator = new AgentOrchestrator();
   private readonly principalAgent: PrincipalAgent;
   private readonly pluginManager: PluginManager;
+  private readonly llmManager = new LlmManager();
   private readonly promptManager: PromptManager;
   private readonly runtimeSettings: AgentRuntimeSettings;
 
@@ -124,6 +127,37 @@ export class WorkflowRuntime {
     state.approvalStatus = approvalStatus;
   }
 
+  private async runStageLlm(stage: 'ideas' | 'planning' | 'orchestrator' | 'principal', snapshot: ProjectSnapshot, task: AgentTask, promptText: string, snapshotHash: string): Promise<{ stage: string; response: LlmResponse; }> {
+    const stagePrompt = stage === 'ideas'
+      ? `You are the ideas agent. Convert the user request into a safe, read-only proposal for the project and preserve the request context without returning final code directly to the user chat.`
+      : stage === 'planning'
+        ? `You are the planning agent. Convert the incoming proposal into structured tasks, dependencies, and execution priorities. Do not paste raw code into the chat; return a plan only.`
+        : stage === 'orchestrator'
+          ? `You are the orchestrator. Coordinate the plan into execution threads and delegate to the right agents. The user must not see raw code yet.`
+          : `You are the principal agent. Prepare the execution patch, determine the relevant plugin, and keep the output approval-ready.`;
+
+    const response = await this.llmManager.completeWithFallback({
+      prompt: `${promptText}\n\nStage: ${stage}`,
+      system: stagePrompt,
+      temperature: this.runtimeSettings.temperature,
+      model: this.runtimeSettings.model,
+      metadata: {
+        agent: stage,
+        taskId: task.id,
+        snapshotHash
+      }
+    }, [this.runtimeSettings.provider, 'ollama', 'openai', 'gemini', 'grok', 'local']);
+
+    console.log('[workflow-runtime] stage llm response', {
+      stage,
+      provider: response.provider,
+      model: response.metadata?.model ?? this.runtimeSettings.model,
+      textPreview: String(response.text ?? '').slice(0, 220)
+    });
+
+    return { stage, response };
+  }
+
   public async runWorkflow(snapshot: ProjectSnapshot, task: AgentTask): Promise<AgentExecutionResult> {
     const context: AgentContext = {
       snapshot,
@@ -150,6 +184,21 @@ export class WorkflowRuntime {
     pushAudit('workflow-started', { taskId: task.id, agent: this.runtimeSettings.agent });
 
     const detectedLanguage = detectLanguageFromSnapshot(snapshot);
+    const snapshotHash = createHash('sha256')
+      .update(JSON.stringify({
+        name: snapshot.name,
+        rootPath: snapshot.rootPath,
+        files: [...snapshot.files].sort(),
+        lastUpdated: snapshot.lastUpdated
+      }))
+      .digest('hex')
+      .slice(0, 16);
+    const llmPrompt = String(task.metadata?.prompt ?? task.title ?? 'Review the current workspace and propose the next best action.').trim();
+    const stageLlmResponses: Array<Record<string, unknown>> = [];
+
+    const ideaLlm = await this.runStageLlm('ideas', snapshot, task, llmPrompt, snapshotHash);
+    stageLlmResponses.push({ stage: ideaLlm.stage, provider: ideaLlm.response.provider, text: ideaLlm.response.text });
+    pushAudit('llm-call', { taskId: task.id, stage: 'ideas', provider: ideaLlm.response.provider, model: ideaLlm.response.metadata?.model ?? this.runtimeSettings.model, ok: Boolean(ideaLlm.response.text) });
 
     const pluginInstances = await this.pluginManager.loadAll({
       projectPath: snapshot.rootPath,
@@ -174,11 +223,23 @@ export class WorkflowRuntime {
     const ideaResult = await this.ideasAgent.think(context, task);
     pushAudit('idea-generation', { taskId: task.id, ok: ideaResult.ok });
 
+    const planLlm = await this.runStageLlm('planning', snapshot, task, `Ideas result: ${ideaResult.message}. User request: ${llmPrompt}`, snapshotHash);
+    stageLlmResponses.push({ stage: planLlm.stage, provider: planLlm.response.provider, text: planLlm.response.text });
+    pushAudit('llm-call', { taskId: task.id, stage: 'planning', provider: planLlm.response.provider, model: planLlm.response.metadata?.model ?? this.runtimeSettings.model, ok: Boolean(planLlm.response.text) });
+
     const planResult = await this.planningAgent.plan(context, task);
     pushAudit('planning', { taskId: task.id, ok: planResult.ok });
 
+    const orchestratorLlm = await this.runStageLlm('orchestrator', snapshot, task, `Plan summary: ${planResult.message}. User request: ${llmPrompt}`, snapshotHash);
+    stageLlmResponses.push({ stage: orchestratorLlm.stage, provider: orchestratorLlm.response.provider, text: orchestratorLlm.response.text });
+    pushAudit('llm-call', { taskId: task.id, stage: 'orchestrator', provider: orchestratorLlm.response.provider, model: orchestratorLlm.response.metadata?.model ?? this.runtimeSettings.model, ok: Boolean(orchestratorLlm.response.text) });
+
     const orchestratorResult = await this.orchestrator.runIdeaWorkflow(snapshot, task);
     pushAudit('orchestrator', { taskId: task.id, ok: orchestratorResult.ok });
+
+    const principalLlm = await this.runStageLlm('principal', snapshot, task, `Execution plan: ${orchestratorResult.message}. User request: ${llmPrompt}`, snapshotHash);
+    stageLlmResponses.push({ stage: principalLlm.stage, provider: principalLlm.response.provider, text: principalLlm.response.text });
+    pushAudit('llm-call', { taskId: task.id, stage: 'principal', provider: principalLlm.response.provider, model: principalLlm.response.metadata?.model ?? this.runtimeSettings.model, ok: Boolean(principalLlm.response.text) });
 
     const principalResult = await this.principalAgent.execute(context, task);
     pushAudit('principal-execution', { taskId: task.id, ok: principalResult.ok, pluginCount: principalResult.data?.executedPlugins ?? 0 });
@@ -196,7 +257,7 @@ export class WorkflowRuntime {
 
     return {
       ok: resultOk,
-      message: `End-to-end workflow reached the approval gate using ${this.runtimeSettings.provider} for agent ${this.runtimeSettings.agent}. The system honored the ideas -> planning -> orchestrator -> principal execution chain.`,
+      message: `End-to-end workflow reached the approval gate using ${this.runtimeSettings.provider} for agent ${this.runtimeSettings.agent}. The system honored the ideas -> planning -> orchestrator -> principal execution chain with sequential model calls at each stage.`,
       data: {
         taskId: task.id,
         ideaResult,
@@ -204,6 +265,8 @@ export class WorkflowRuntime {
         orchestratorResult,
         principalResult,
         executionMetadata,
+        llmResponse: principalLlm.response,
+        stageLlmResponses,
         approvalStatus: 'awaiting_review',
         pendingPatch,
         agentRuntime: { ...this.runtimeSettings },

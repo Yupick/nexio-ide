@@ -221,11 +221,12 @@ app.whenReady().then(() => {
   });
 
   ipcMain.handle('agent:run-workflow', async (_event, taskTitle?: string, targetFile?: string | null, runtimeConfig?: Partial<AgentRuntimeSettings>) => {
-    const snapshot = createProjectSnapshot(workspaceRoot);
-    const runtime = new WorkflowRuntime({
+    const resolvedConfig = {
       ...agentRuntimeSettings,
       ...(runtimeConfig ?? {})
-    });
+    };
+    const snapshot = createProjectSnapshot(workspaceRoot);
+    const runtime = new WorkflowRuntime(resolvedConfig);
     const task = {
       id: `task-${Date.now()}`,
       title: taskTitle || 'Review current workspace',
@@ -234,10 +235,32 @@ app.whenReady().then(() => {
         : 'Inspect the current workspace and produce ideas, roadmap tasks, and a reviewable execution result.',
       priority: 'high' as const,
       dependencies: [],
-      metadata: { targetFile: targetFile ?? null }
+      metadata: {
+        targetFile: targetFile ?? null,
+        prompt: taskTitle ?? 'Review current workspace',
+        language: 'typescript'
+      }
     };
 
-    return runtime.runWorkflow(snapshot, task);
+    console.log('[electron main] agent:run-workflow', {
+      taskId: task.id,
+      title: task.title,
+      provider: resolvedConfig.provider,
+      model: resolvedConfig.model,
+      baseUrl: resolvedConfig.baseUrl,
+      targetFile: targetFile ?? null
+    });
+
+    const result = await runtime.runWorkflow(snapshot, task);
+    const llmResponse = result.data && typeof result.data === 'object' ? (result.data as Record<string, unknown>).llmResponse as Record<string, unknown> | undefined : undefined;
+    console.log('[electron main] workflow result', {
+      taskId: task.id,
+      ok: result.ok,
+      provider: String((llmResponse?.provider as string | undefined) ?? resolvedConfig.provider),
+      model: String((llmResponse?.metadata as Record<string, unknown> | undefined)?.model ?? resolvedConfig.model),
+      responsePreview: String((llmResponse?.text as string | undefined) ?? '').slice(0, 500)
+    });
+    return result;
   });
 
   createWindow();

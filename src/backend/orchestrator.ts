@@ -41,6 +41,31 @@ export class AgentOrchestrator {
       stage: entry.priority === 'high' ? 'execution' : 'validation'
     }));
 
+    const executionThreads = (roadmap.tasks ?? []).map((entry, index) => {
+      const lowerTitle = `${entry.title} ${entry.description}`.toLowerCase();
+      const delegateTo = /docs|documentation|readme|guide/.test(lowerTitle)
+        ? 'docs-plugin'
+        : /test|qa|validation|smoke|regression/.test(lowerTitle)
+          ? 'testing-plugin'
+          : /refactor|cleanup|code|improve/.test(lowerTitle)
+            ? 'refactor-plugin'
+            : 'principal-agent';
+
+      return {
+        id: entry.id,
+        title: entry.title,
+        description: entry.description,
+        order: index + 1,
+        owner: 'orchestrator',
+        delegateTo,
+        status: 'pending',
+        dependencies: Array.isArray(entry.dependencies) ? entry.dependencies : [],
+        priority: entry.priority,
+        stage: entry.priority === 'high' ? 'execution' : 'validation',
+        createdAt: new Date().toISOString()
+      };
+    });
+
     return {
       ok: ideaResult.ok && planResult.ok,
       message: 'Ideas flow completed, planning output was normalized, and the orchestrator staged execution by phase.',
@@ -50,6 +75,7 @@ export class AgentOrchestrator {
         planResult,
         roadmap,
         orchestratedTasks,
+        executionThreads,
         contextRoot: snapshot.rootPath,
         stage: 'orchestrated'
       }

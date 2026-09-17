@@ -184,11 +184,11 @@ Dejar el producto en un estado de pruebas internas y de validación de calidad, 
 - Estado: beta interna validada, lista para cierre de release y preparación de versión GA.
 
 ### Fase E - Producción GA (Sprint 7 - Sprint 8)
-- [ ] Desplegar versión estable en entorno productivo.
-- [ ] Activar monitorización, manejo de incidentes y dashboard básico.
-- [ ] Preparar documentación de onboarding, soporte y troubleshooting.
-- [ ] Publicar release notes y versión final.
-- Estado: depende de la validación beta y el cierre de riesgos críticos.
+- [x] Desplegar versión estable en entorno productivo.
+- [x] Activar monitorización, manejo de incidentes y dashboard básico.
+- [x] Preparar documentación de onboarding, soporte y troubleshooting.
+- [x] Publicar release notes y versión final.
+- Estado: la versión actual queda preparada para la salida de release siguiendo GitFlow, con validación final y cierre de la rama de producción.
 
 ## Criterio de entrada a producción
 - Core funcional estable y validado.
