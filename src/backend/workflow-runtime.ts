@@ -12,8 +12,10 @@ import { PrincipalAgent } from '../agents/principal-agent';
 import { AgentOrchestrator } from './orchestrator';
 import type { AgentRuntimeSettings } from './config';
 import { PluginManager } from './plugin-manager';
+import { LlmManager } from './llm/llm-manager';
 import { PromptManager } from './llm/prompt-manager';
 import type { AgentContext, AgentExecutionResult, AgentTask, ProjectSnapshot, Roadmap } from '../shared/types';
+import type { LlmResponse } from './llm/types';
 
 export type ApprovalStatus = 'awaiting_review' | 'approved' | 'rejected';
 
@@ -91,6 +93,7 @@ export class WorkflowRuntime {
   private readonly orchestrator = new AgentOrchestrator();
   private readonly principalAgent: PrincipalAgent;
   private readonly pluginManager: PluginManager;
+  private readonly llmManager = new LlmManager();
   private readonly promptManager: PromptManager;
   private readonly runtimeSettings: AgentRuntimeSettings;
 
@@ -100,8 +103,7 @@ export class WorkflowRuntime {
     model: 'qwen2.5-coder:0.5b',
     baseUrl: 'http://chat.nightslayer.com.ar:11434',
     apiKey: '',
-    temperature: 0.4,
-    executionMode: 'manual'
+    temperature: 0.4
   }) {
     this.runtimeSettings = runtimeSettings;
     const pluginDirectory = fs.existsSync(path.resolve(process.cwd(), 'dist', 'src', 'plugins'))
@@ -125,72 +127,35 @@ export class WorkflowRuntime {
     state.approvalStatus = approvalStatus;
   }
 
-  private buildAutonomousFileContent(task: AgentTask): string {
-    const title = task.title.toLowerCase();
-    const htmlPage = `<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>${task.title}</title>
-    <style>
-      :root { color-scheme: light dark; }
-      body {
-        margin: 0;
-        font-family: Arial, sans-serif;
-        background: #0f172a;
-        color: #e2e8f0;
-        min-height: 100vh;
-        display: grid;
-        place-items: center;
+  private async runStageLlm(stage: 'ideas' | 'planning' | 'orchestrator' | 'principal', snapshot: ProjectSnapshot, task: AgentTask, promptText: string, snapshotHash: string): Promise<{ stage: string; response: LlmResponse; }> {
+    const stagePrompt = stage === 'ideas'
+      ? `You are the ideas agent. Convert the user request into a safe, read-only proposal for the project and preserve the request context without returning final code directly to the user chat.`
+      : stage === 'planning'
+        ? `You are the planning agent. Convert the incoming proposal into structured tasks, dependencies, and execution priorities. Do not paste raw code into the chat; return a plan only.`
+        : stage === 'orchestrator'
+          ? `You are the orchestrator. Coordinate the plan into execution threads and delegate to the right agents. The user must not see raw code yet.`
+          : `You are the principal agent. Prepare the execution patch, determine the relevant plugin, and keep the output approval-ready.`;
+
+    const response = await this.llmManager.completeWithFallback({
+      prompt: `${promptText}\n\nStage: ${stage}`,
+      system: stagePrompt,
+      temperature: this.runtimeSettings.temperature,
+      model: this.runtimeSettings.model,
+      metadata: {
+        agent: stage,
+        taskId: task.id,
+        snapshotHash
       }
-      .card {
-        width: min(720px, 90vw);
-        background: rgba(15, 23, 42, 0.8);
-        border: 1px solid rgba(148, 163, 184, 0.3);
-        border-radius: 16px;
-        padding: 2rem;
-        box-shadow: 0 15px 30px rgba(15, 23, 42, 0.3);
-      }
-      h1 { margin: 0 0 0.75rem; }
-      p { line-height: 1.6; }
-    </style>
-  </head>
-  <body>
-    <main class="card">
-      <h1>${task.title}</h1>
-      <p>${task.description}</p>
-      <p>Este archivo fue generado automáticamente dentro del workspace activo por el runtime del editor.</p>
-    </main>
-  </body>
-</html>`;
+    }, [this.runtimeSettings.provider, 'ollama', 'openai', 'gemini', 'grok', 'local']);
 
-    if (title.includes('html') || title.includes('page') || title.includes('web')) {
-      return htmlPage;
-    }
+    console.log('[workflow-runtime] stage llm response', {
+      stage,
+      provider: response.provider,
+      model: response.metadata?.model ?? this.runtimeSettings.model,
+      textPreview: String(response.text ?? '').slice(0, 220)
+    });
 
-    return `# ${task.title}\n\n${task.description}\n`;
-  }
-
-  private applyAutonomousApproval(snapshot: ProjectSnapshot, task: AgentTask, principalResult: AgentExecutionResult): { approvalStatus: ApprovalStatus; pendingPatch: string; createdFiles: string[] } {
-    if (this.runtimeSettings.executionMode !== 'autonomous') {
-      return {
-        approvalStatus: 'awaiting_review',
-        pendingPatch: principalResult.message,
-        createdFiles: []
-      };
-    }
-
-    const targetFile = path.resolve(snapshot.rootPath, 'index.html');
-    const content = this.buildAutonomousFileContent(task);
-    fs.mkdirSync(path.dirname(targetFile), { recursive: true });
-    fs.writeFileSync(targetFile, content, 'utf8');
-
-    return {
-      approvalStatus: 'approved',
-      pendingPatch: content,
-      createdFiles: [path.relative(snapshot.rootPath, targetFile)]
-    };
+    return { stage, response };
   }
 
   public async runWorkflow(snapshot: ProjectSnapshot, task: AgentTask): Promise<AgentExecutionResult> {
@@ -219,6 +184,21 @@ export class WorkflowRuntime {
     pushAudit('workflow-started', { taskId: task.id, agent: this.runtimeSettings.agent });
 
     const detectedLanguage = detectLanguageFromSnapshot(snapshot);
+    const snapshotHash = createHash('sha256')
+      .update(JSON.stringify({
+        name: snapshot.name,
+        rootPath: snapshot.rootPath,
+        files: [...snapshot.files].sort(),
+        lastUpdated: snapshot.lastUpdated
+      }))
+      .digest('hex')
+      .slice(0, 16);
+    const llmPrompt = String(task.metadata?.prompt ?? task.title ?? 'Review the current workspace and propose the next best action.').trim();
+    const stageLlmResponses: Array<Record<string, unknown>> = [];
+
+    const ideaLlm = await this.runStageLlm('ideas', snapshot, task, llmPrompt, snapshotHash);
+    stageLlmResponses.push({ stage: ideaLlm.stage, provider: ideaLlm.response.provider, text: ideaLlm.response.text });
+    pushAudit('llm-call', { taskId: task.id, stage: 'ideas', provider: ideaLlm.response.provider, model: ideaLlm.response.metadata?.model ?? this.runtimeSettings.model, ok: Boolean(ideaLlm.response.text) });
 
     const pluginInstances = await this.pluginManager.loadAll({
       projectPath: snapshot.rootPath,
@@ -243,11 +223,23 @@ export class WorkflowRuntime {
     const ideaResult = await this.ideasAgent.think(context, task);
     pushAudit('idea-generation', { taskId: task.id, ok: ideaResult.ok });
 
+    const planLlm = await this.runStageLlm('planning', snapshot, task, `Ideas result: ${ideaResult.message}. User request: ${llmPrompt}`, snapshotHash);
+    stageLlmResponses.push({ stage: planLlm.stage, provider: planLlm.response.provider, text: planLlm.response.text });
+    pushAudit('llm-call', { taskId: task.id, stage: 'planning', provider: planLlm.response.provider, model: planLlm.response.metadata?.model ?? this.runtimeSettings.model, ok: Boolean(planLlm.response.text) });
+
     const planResult = await this.planningAgent.plan(context, task);
     pushAudit('planning', { taskId: task.id, ok: planResult.ok });
 
+    const orchestratorLlm = await this.runStageLlm('orchestrator', snapshot, task, `Plan summary: ${planResult.message}. User request: ${llmPrompt}`, snapshotHash);
+    stageLlmResponses.push({ stage: orchestratorLlm.stage, provider: orchestratorLlm.response.provider, text: orchestratorLlm.response.text });
+    pushAudit('llm-call', { taskId: task.id, stage: 'orchestrator', provider: orchestratorLlm.response.provider, model: orchestratorLlm.response.metadata?.model ?? this.runtimeSettings.model, ok: Boolean(orchestratorLlm.response.text) });
+
     const orchestratorResult = await this.orchestrator.runIdeaWorkflow(snapshot, task);
     pushAudit('orchestrator', { taskId: task.id, ok: orchestratorResult.ok });
+
+    const principalLlm = await this.runStageLlm('principal', snapshot, task, `Execution plan: ${orchestratorResult.message}. User request: ${llmPrompt}`, snapshotHash);
+    stageLlmResponses.push({ stage: principalLlm.stage, provider: principalLlm.response.provider, text: principalLlm.response.text });
+    pushAudit('llm-call', { taskId: task.id, stage: 'principal', provider: principalLlm.response.provider, model: principalLlm.response.metadata?.model ?? this.runtimeSettings.model, ok: Boolean(principalLlm.response.text) });
 
     const principalResult = await this.principalAgent.execute(context, task);
     pushAudit('principal-execution', { taskId: task.id, ok: principalResult.ok, pluginCount: principalResult.data?.executedPlugins ?? 0 });
@@ -256,17 +248,16 @@ export class WorkflowRuntime {
     const patchSummary = Array.isArray((principalResult.data as Record<string, unknown> | undefined)?.patchSummary)
       ? ((principalResult.data as Record<string, unknown>).patchSummary as Array<Record<string, unknown>>)
       : [];
-    const pendingPatchBase = patchSummary.length > 0
+    const pendingPatch = patchSummary.length > 0
       ? patchSummary.map((entry) => String(entry.diff ?? entry.message ?? '')).filter(Boolean).join('\n\n')
       : principalResult.message;
 
-    const automatedOutcome = this.applyAutonomousApproval(snapshot, task, principalResult);
     const resultOk = ideaResult.ok && planResult.ok && orchestratorResult.ok && principalResult.ok;
-    pushAudit('workflow-complete', { taskId: task.id, ok: resultOk, approvalStatus: automatedOutcome.approvalStatus });
+    pushAudit('workflow-complete', { taskId: task.id, ok: resultOk });
 
     return {
       ok: resultOk,
-      message: `End-to-end workflow reached the ${automatedOutcome.approvalStatus === 'approved' ? 'autonomous execution' : 'approval'} gate using ${this.runtimeSettings.provider} for agent ${this.runtimeSettings.agent}. The system honored the ideas -> planning -> orchestrator -> principal execution chain.`,
+      message: `End-to-end workflow reached the approval gate using ${this.runtimeSettings.provider} for agent ${this.runtimeSettings.agent}. The system honored the ideas -> planning -> orchestrator -> principal execution chain with sequential model calls at each stage.`,
       data: {
         taskId: task.id,
         ideaResult,
@@ -274,9 +265,10 @@ export class WorkflowRuntime {
         orchestratorResult,
         principalResult,
         executionMetadata,
-        approvalStatus: automatedOutcome.approvalStatus,
-        pendingPatch: automatedOutcome.pendingPatch || pendingPatchBase,
-        createdFiles: automatedOutcome.createdFiles,
+        llmResponse: principalLlm.response,
+        stageLlmResponses,
+        approvalStatus: 'awaiting_review',
+        pendingPatch,
         agentRuntime: { ...this.runtimeSettings },
         availablePlugins: this.pluginManager.getDefinitions().map((plugin) => plugin.id),
         promptContext,

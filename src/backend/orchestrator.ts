@@ -8,64 +8,9 @@ import { IdeasAgent } from '../agents/ideas-agent';
 import { PlanningAgent } from '../agents/planning-agent';
 import type { AgentContext, AgentExecutionResult, AgentTask, ProjectSnapshot, Roadmap } from '../shared/types';
 
-interface ExecutionThread {
-  id: string;
-  owner: 'planning' | 'principal' | 'plugin';
-  stage: 'ideas' | 'planning' | 'execution' | 'validation';
-  status: 'queued' | 'running' | 'waiting' | 'done';
-  dependencies: string[];
-  taskId: string;
-  createdAt: string;
-}
-
 export class AgentOrchestrator {
   private readonly ideasAgent = new IdeasAgent();
   private readonly planningAgent = new PlanningAgent();
-
-  private buildExecutionThreads(task: AgentTask, roadmap: Roadmap): ExecutionThread[] {
-    const tasks = roadmap.tasks && roadmap.tasks.length > 0 ? roadmap.tasks : [{
-      id: `${task.id}-root`,
-      title: task.title,
-      description: task.description,
-      priority: task.priority,
-      dependencies: task.dependencies ?? []
-    }];
-
-    return tasks.map((entry, index) => ({
-      id: `thread-${entry.id ?? `${task.id}-${index}`}`,
-      owner: index % 2 === 0 ? 'planning' : 'principal',
-      stage: entry.priority === 'high' ? 'execution' : 'validation',
-      status: index === 0 ? 'running' : 'queued',
-      dependencies: entry.dependencies ?? [],
-      taskId: task.id,
-      createdAt: new Date().toISOString()
-    }));
-  }
-
-  private buildMessageBus(task: AgentTask, roadmap: Roadmap): Array<Record<string, unknown>> {
-    const entries = [
-      {
-        id: `msg-${task.id}-planning`,
-        type: 'task',
-        from: 'planning-agent',
-        to: 'principal-agent',
-        correlationId: task.id,
-        payload: { taskId: task.id, summary: roadmap.summary ?? 'Roadmap created and staged for execution.' },
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: `msg-${task.id}-principal`,
-        type: 'ack',
-        from: 'principal-agent',
-        to: 'planning-agent',
-        correlationId: task.id,
-        payload: { taskId: task.id, status: 'queued', accepted: true },
-        createdAt: new Date().toISOString()
-      }
-    ];
-
-    return entries;
-  }
 
   public async runIdeaWorkflow(snapshot: ProjectSnapshot, task: AgentTask): Promise<AgentExecutionResult> {
     const context: AgentContext = {
@@ -96,8 +41,30 @@ export class AgentOrchestrator {
       stage: entry.priority === 'high' ? 'execution' : 'validation'
     }));
 
-    const threads = this.buildExecutionThreads(task, roadmap);
-    const messageBus = this.buildMessageBus(task, roadmap);
+    const executionThreads = (roadmap.tasks ?? []).map((entry, index) => {
+      const lowerTitle = `${entry.title} ${entry.description}`.toLowerCase();
+      const delegateTo = /docs|documentation|readme|guide/.test(lowerTitle)
+        ? 'docs-plugin'
+        : /test|qa|validation|smoke|regression/.test(lowerTitle)
+          ? 'testing-plugin'
+          : /refactor|cleanup|code|improve/.test(lowerTitle)
+            ? 'refactor-plugin'
+            : 'principal-agent';
+
+      return {
+        id: entry.id,
+        title: entry.title,
+        description: entry.description,
+        order: index + 1,
+        owner: 'orchestrator',
+        delegateTo,
+        status: 'pending',
+        dependencies: Array.isArray(entry.dependencies) ? entry.dependencies : [],
+        priority: entry.priority,
+        stage: entry.priority === 'high' ? 'execution' : 'validation',
+        createdAt: new Date().toISOString()
+      };
+    });
 
     return {
       ok: ideaResult.ok && planResult.ok,
@@ -108,8 +75,7 @@ export class AgentOrchestrator {
         planResult,
         roadmap,
         orchestratedTasks,
-        threads,
-        messageBus,
+        executionThreads,
         contextRoot: snapshot.rootPath,
         stage: 'orchestrated'
       }

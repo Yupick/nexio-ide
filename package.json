@@ -1,6 +1,6 @@
 {
   "name": "nexio-ide",
-  "version": "0.1.0-beta.1",
+  "version": "1.0.0",
   "private": true,
   "description": "Editor IA multiplataforma con agentes, plugins y sandbox local.",
   "main": "dist/src/electron/main.js",

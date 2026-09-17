@@ -214,6 +214,53 @@
         padding: 1rem 1.1rem 1.2rem;
       }
 
+      .debug-modal {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(2, 6, 23, 0.72);
+        backdrop-filter: blur(7px);
+        z-index: 70;
+      }
+
+      .debug-modal.hidden {
+        display: none;
+      }
+
+      .debug-panel {
+        width: min(760px, calc(100vw - 2rem));
+        max-height: 80vh;
+        overflow: auto;
+        background: linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(8, 14, 26, 0.98));
+        border: 1px solid var(--border);
+        border-radius: 1.1rem;
+        box-shadow: var(--shadow);
+        padding: 1rem 1.1rem 1.2rem;
+      }
+
+      .debug-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.55rem;
+        margin-top: 0.8rem;
+      }
+
+      .debug-item {
+        padding: 0.7rem 0.8rem;
+        border-radius: 0.7rem;
+        border: 1px solid var(--border);
+        background: rgba(148, 163, 184, 0.04);
+        color: var(--muted);
+        font-size: 0.8rem;
+        line-height: 1.6;
+      }
+
+      .debug-item strong {
+        color: var(--text);
+      }
+
       .config-header {
         display: flex;
         align-items: center;
@@ -730,125 +777,30 @@
         color: var(--text);
       }
 
+      .diff-summary {
+        margin: 0 0 0.7rem;
+        color: var(--muted);
+        font-size: 0.8rem;
+        line-height: 1.5;
+        padding: 0.65rem 0.75rem;
+        border-radius: 0.75rem;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        background: rgba(148, 163, 184, 0.05);
+        font-weight: 600;
+      }
+
       .diff-box {
         background: rgba(15, 23, 42, 0.95);
-        border: 1px solid var(--border);
-        border-radius: 0.8rem;
-        padding: 0.8rem;
+        border: 1px solid rgba(148, 163, 184, 0.24);
+        border-radius: 0.85rem;
+        padding: 0.85rem;
         color: var(--text);
         font-family: 'JetBrains Mono', 'Fira Code', monospace;
         font-size: 0.82rem;
-        line-height: 1.5;
+        line-height: 1.55;
         white-space: pre-wrap;
         min-height: 130px;
-      }
-
-      .patch-summary {
-        display: grid;
-        gap: 0.45rem;
-        padding: 0.7rem 0.8rem;
-        margin-bottom: 0.8rem;
-        border-radius: 0.8rem;
-        border: 1px solid rgba(148, 163, 184, 0.18);
-        background: rgba(15, 23, 42, 0.6);
-      }
-
-      .patch-summary-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.8rem;
-        color: var(--muted);
-        font-size: 0.78rem;
-      }
-
-      .patch-summary-row strong {
-        color: var(--text);
-        font-weight: 700;
-        text-align: right;
-      }
-
-      .patch-chip {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0.28rem 0.55rem;
-        border-radius: 999px;
-        border: 1px solid rgba(148, 163, 184, 0.24);
-        background: rgba(15, 118, 110, 0.12);
-        color: #b7f3eb;
-        font-size: 0.72rem;
-        font-weight: 700;
-      }
-
-      .patch-mode {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 120px;
-        padding: 0.32rem 0.6rem;
-        border-radius: 999px;
-        font-size: 0.7rem;
-        font-weight: 700;
-        border: 1px solid rgba(96, 165, 250, 0.28);
-        background: rgba(59, 130, 246, 0.12);
-        color: #bfdbfe;
-      }
-
-      .patch-mode.change {
-        border-color: rgba(45, 212, 191, 0.34);
-        background: rgba(45, 212, 191, 0.11);
-        color: #a7f3d0;
-      }
-
-      .patch-mode.suggestion {
-        border-color: rgba(250, 204, 21, 0.36);
-        background: rgba(250, 204, 21, 0.11);
-        color: #fde68a;
-      }
-
-      .history-list {
-        display: flex;
-        flex-direction: column;
-        gap: 0.6rem;
-      }
-
-      .history-item {
-        padding: 0.65rem 0.7rem;
-        border-radius: 0.75rem;
-        border: 1px solid var(--border);
-        background: rgba(15, 23, 42, 0.7);
-        display: grid;
-        gap: 0.25rem;
-      }
-
-      .history-item.approved {
-        border-color: rgba(34, 197, 94, 0.4);
-      }
-
-      .history-item.rejected {
-        border-color: rgba(239, 68, 68, 0.4);
-      }
-
-      .history-item-header {
-        display: flex;
-        justify-content: space-between;
-        gap: 0.75rem;
-        align-items: center;
-        color: var(--text);
-        font-size: 0.75rem;
-        font-weight: 700;
-      }
-
-      .history-item-message {
-        color: var(--muted);
-        font-size: 0.76rem;
-        line-height: 1.5;
-      }
-
-      .history-item-time {
-        color: var(--muted);
-        font-size: 0.68rem;
+        box-shadow: inset 0 1px 0 rgba(148, 163, 184, 0.08);
       }
 
       .approval-actions {
@@ -857,13 +809,29 @@
         margin-top: 0.75rem;
       }
 
+      .approval-actions button {
+        flex: 1;
+        border: 1px solid transparent;
+        border-radius: 0.75rem;
+        padding: 0.7rem 0.8rem;
+        font-weight: 700;
+        transition: transform 0.15s ease, filter 0.15s ease, border-color 0.15s ease;
+      }
+
+      .approval-actions button:hover {
+        transform: translateY(-1px);
+        filter: brightness(1.04);
+      }
+
       .approve-btn {
         background: rgba(34, 197, 94, 0.16);
+        border-color: rgba(34, 197, 94, 0.4);
         color: #dcfce7;
       }
 
       .reject-btn {
         background: rgba(239, 68, 68, 0.16);
+        border-color: rgba(239, 68, 68, 0.4);
         color: #fecaca;
       }
 
@@ -871,49 +839,7 @@
         margin-top: 0.8rem;
         font-size: 0.88rem;
         color: var(--muted);
-      }
-
-      .confirm-modal {
-        position: fixed;
-        inset: 0;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        background: rgba(2, 6, 23, 0.75);
-        backdrop-filter: blur(6px);
-        z-index: 120;
-      }
-
-      .confirm-modal.visible {
-        display: flex;
-      }
-
-      .confirm-dialog {
-        width: min(440px, 92vw);
-        background: rgba(15, 23, 42, 0.96);
-        border: 1px solid rgba(148, 163, 184, 0.24);
-        border-radius: 1rem;
-        padding: 1rem 1rem 0.8rem;
-        box-shadow: 0 25px 80px rgba(2, 6, 23, 0.45);
-      }
-
-      .confirm-dialog h4 {
-        margin: 0 0 0.7rem;
-        color: var(--text);
-        font-size: 1.05rem;
-      }
-
-      .confirm-dialog p {
-        margin: 0 0 0.8rem;
-        color: var(--muted);
-        line-height: 1.6;
-      }
-
-      .confirm-dialog .confirm-actions {
-        display: flex;
-        justify-content: flex-end;
-        gap: 0.6rem;
-        margin-top: 0.6rem;
+        font-weight: 600;
       }
 
       .agent-status-list {
@@ -1105,6 +1031,19 @@
       </div>
     </div>
 
+    <div id="debug-modal" class="debug-modal hidden" aria-hidden="true">
+      <div class="debug-panel" role="dialog" aria-modal="true" aria-labelledby="debug-title">
+        <div class="config-header">
+          <h3 id="debug-title">Depuración del sistema</h3>
+          <button class="config-close" id="debug-close" type="button" aria-label="Cerrar depuración">×</button>
+        </div>
+        <div class="config-actions-inline">
+          <button class="ghost-btn" id="debug-toggle" type="button">Depuración desactivada</button>
+        </div>
+        <div id="debug-list" class="debug-list"></div>
+      </div>
+    </div>
+
     <div id="app">
       <aside class="sidebar">
         <div class="brand">
@@ -1133,15 +1072,19 @@
                   <button class="menu-item" type="button" data-menu-action="open-file">Abrir archivo (Ctrl+O)</button>
                   <button class="menu-item" type="button" data-menu-action="close-file">Cerrar archivo (Ctrl+X)</button>
                   <button class="menu-item" type="button" data-menu-action="save-file">Guardar archivo (Ctrl+W)</button>
+                  <button class="menu-item" type="button" data-menu-action="save-as-file">Guardar como...</button>
+                  <button class="menu-item" type="button" data-menu-action="save-all-files">Guardar todo</button>
                   <button class="menu-item" type="button" data-menu-action="new-file">Nuevo archivo</button>
                   <div class="menu-divider"></div>
                   <button class="menu-item" type="button" data-menu-action="open-workspace">Abrir espacio de trabajo (Ctrl+A)</button>
                   <button class="menu-item" type="button" data-menu-action="close-workspace">Cerrar espacio de trabajo</button>
                   <div class="menu-divider"></div>
+                  <button class="menu-item" type="button" data-menu-action="debug-panel">Depuración</button>
                   <button class="menu-item" type="button" data-menu-action="config">Configuración</button>
                 </div>
               </div>
               <button class="menu-btn" id="menu-config" type="button">Configuración</button>
+              <button class="menu-btn" id="menu-debug" type="button">Depuración</button>
               <button class="menu-btn" id="menu-plugins" type="button">Plugins</button>
             </div>
           </div>
@@ -1199,33 +1142,8 @@
         </div>
 
         <div class="panel-block">
-          <h3>Propuesta de cambio</h3>
-          <div class="patch-summary">
-            <div class="patch-summary-row">
-              <span>Archivo</span>
-              <strong id="patch-target-file">src/example.ts</strong>
-            </div>
-            <div class="patch-summary-row">
-              <span>Tipo</span>
-              <span class="patch-mode change" id="patch-mode">Cambio propuesto</span>
-            </div>
-            <div class="patch-summary-row">
-              <span>Acción</span>
-              <strong id="patch-action-type">Modificación</strong>
-            </div>
-            <div class="patch-summary-row">
-              <span>Impacto</span>
-              <strong id="patch-impact">1 archivo · 7 líneas</strong>
-            </div>
-            <div class="patch-summary-row">
-              <span>Riesgo</span>
-              <span class="patch-chip" id="patch-risk">Bajo</span>
-            </div>
-            <div class="patch-summary-row">
-              <span>Resumen</span>
-              <strong id="patch-summary-text">Se actualizará el bloque actual para ajustar la lógica del archivo activo.</strong>
-            </div>
-          </div>
+          <h3>Resumen del cambio</h3>
+          <div class="diff-summary" id="diff-summary">Revisa qué cambiará antes de aplicar la propuesta.</div>
           <div class="diff-box" id="diff-box">--- src/example.ts
 +++ src/example.ts
 @@
@@ -1235,28 +1153,11 @@
 
           <div class="approval-actions">
             <button class="approve-btn" type="button">Aplicar cambios</button>
-            <button class="reject-btn" type="button">Descartar propuesta</button>
+            <button class="reject-btn" type="button">Descartar cambios</button>
           </div>
-          <div id="approval-status">Pendiente de revisión</div>
-        </div>
-
-        <div class="panel-block">
-          <h3>Historial de decisiones</h3>
-          <div id="workflow-history-list" class="history-list" aria-live="polite"></div>
+          <div id="approval-status">Esperando revisión</div>
         </div>
       </aside>
-    </div>
-
-    <div id="approval-confirm-modal" class="confirm-modal" aria-hidden="true">
-      <div class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="approval-confirm-title">
-        <h4 id="approval-confirm-title">Aplicar cambios en el workspace</h4>
-        <p id="approval-confirm-copy">Se modificará el archivo activo dentro del workspace. Revisa la propuesta antes de confirmar.</p>
-        <div class="confirm-actions">
-          <button class="ghost-btn" id="approval-confirm-cancel" type="button">Cancelar</button>
-          <button class="ghost-btn" id="approval-confirm-discard" type="button">Descartar propuesta</button>
-          <button class="prompt-button" id="approval-confirm-apply" type="button">Aplicar cambios</button>
-        </div>
-      </div>
     </div>
 
     <div id="agent-log-modal" class="log-modal" aria-hidden="true">
@@ -1293,11 +1194,10 @@
       const DEFAULT_AGENT_CONFIG = {
         provider: 'ollama',
         agent: 'principal',
-        model: 'llama3.1',
+        model: 'qwen2.5-coder:0.5b',
         baseUrl: 'http://chat.nightslayer.com.ar:11434',
         apiKey: '',
-        temperature: 0.4,
-        executionMode: 'manual'
+        temperature: 0.4
       };
 
       const AGENT_NAMES = ['ideas', 'planning', 'principal'];
@@ -1314,6 +1214,8 @@
         pendingPatch: '',
         latestWorkflowTaskId: null,
         workflowHistory: [],
+        debugEnabled: true,
+        debugEntries: [],
         agentConfig: { ...DEFAULT_AGENT_CONFIG },
         activeAgent: 'principal',
         agentProfiles: {},
@@ -1392,6 +1294,46 @@
         return generic;
       }
 
+      function buildWorkflowPreview(input = {}) {
+        const ideaSuggestions = Array.isArray(input.ideaSuggestions) ? input.ideaSuggestions.filter(Boolean) : [];
+        const autocompleteExamples = Array.isArray(input.autocompleteExamples) ? input.autocompleteExamples.filter(Boolean) : [];
+        const roadmapTasks = Array.isArray(input.roadmapTasks) ? input.roadmapTasks.filter(Boolean) : [];
+
+        const taskPreview = roadmapTasks.length > 0
+          ? roadmapTasks.map((task) => `- ${task.title ?? 'Task'}: ${task.description ?? 'No description provided.'}`).join('\n')
+          : input.principalMessage || input.fallbackPrompt || 'No roadmap tasks produced yet.';
+
+        const pendingPatch = autocompleteExamples.length > 0
+          ? autocompleteExamples[0]
+          : input.principalMessage || input.fallbackPrompt || taskPreview || 'No patch generated.';
+
+        const suggestionsText = ideaSuggestions.length > 0
+          ? ideaSuggestions.join('\n')
+          : input.principalMessage || input.fallbackPrompt || 'Ideas mode complete.';
+
+        return {
+          taskPreview,
+          pendingPatch,
+          suggestionsText
+        };
+      }
+
+      function updateDiffSummary() {
+        const summaryElement = document.getElementById('diff-summary');
+        if (!summaryElement) {
+          return;
+        }
+
+        const patchText = normalizePatchText(state.pendingPatch || diffBox.textContent || '');
+        if (!patchText) {
+          summaryElement.textContent = 'No hay cambios pendientes para revisar.';
+          return;
+        }
+
+        const lineCount = patchText.split(/\r?\n/).length;
+        summaryElement.textContent = `Se aplicarán ${Math.max(1, lineCount)} líneas de cambio.`;
+      }
+
       function applySuggestionAtSelection(suggestion) {
         const cursor = editor.selectionStart ?? editor.value.length;
         const insertion = suggestion.text || suggestion.label || '';
@@ -1447,7 +1389,7 @@
             ...DEFAULT_AGENT_CONFIG,
             agent: agentName,
             provider: 'ollama',
-            model: 'llama3.1',
+            model: 'qwen2.5-coder:0.5b',
             baseUrl: 'http://chat.nightslayer.com.ar:11434'
           };
           return accumulator;
@@ -1533,70 +1475,133 @@
         saveWorkflowHistory();
       }
 
-      function buildNaturalPatchSummary(patchText, targetFile) {
-        const cleanText = String(patchText || '').trim();
-        if (!cleanText) {
-          return 'No hay cambios propuestos para este archivo en este momento.';
+      function normalizePatchText(rawPatch) {
+        if (!rawPatch || typeof rawPatch !== 'string') {
+          return '';
         }
 
-        const lines = cleanText.split('\n');
-        const added = lines.filter((line) => line.startsWith('+') && !line.startsWith('+++')).length;
-        const removed = lines.filter((line) => line.startsWith('-') && !line.startsWith('---')).length;
-        const fileLabel = targetFile || 'el archivo activo';
-
-        if (added > 0 && removed === 0) {
-          return `Se añadirá contenido en ${fileLabel} para ampliar la lógica actual con ${added} líneas nuevas.`;
-        }
-
-        if (removed > 0 && added === 0) {
-          return `Se eliminará parte del contenido en ${fileLabel} para limpiar y simplificar la lógica actual.`;
-        }
-
-        if (added > removed) {
-          return `Se actualizará ${fileLabel} para incorporar ${added} cambios nuevos y mantener el bloque actual consistente.`;
-        }
-
-        return `Se ajustará ${fileLabel} para revisar ${added + removed} líneas y alinear la lógica con el flujo actual.`;
+        let normalized = rawPatch.trim();
+        normalized = normalized.replace(/^```(?:html|htm|js|ts|tsx|jsx|md|txt|json)?\s*/i, '');
+        normalized = normalized.replace(/```\s*$/i, '');
+        normalized = normalized.replace(/^```/i, '');
+        normalized = normalized.replace(/```$/i, '');
+        return normalized.trim();
       }
 
-      function updatePatchSummary() {
-        const patchText = String(state.pendingPatch || diffBox.textContent || '').trim();
-        const targetFile = state.activeFile || 'workspace';
-        const diffLines = patchText.split('\n').filter((line) => line.startsWith('+') || line.startsWith('-')).length;
-        const hasPatch = patchText.length > 0;
-        const changeAction = patchText.includes('+++') || patchText.includes('---') ? 'Modificación' : 'Revisión';
-        const risk = diffLines > 18 ? 'Medio' : 'Bajo';
-        const modeBadgeEl = document.getElementById('patch-mode');
-        const modeLabel = hasPatch ? 'Cambio propuesto' : 'Sugerencia';
-        const modeClass = hasPatch ? 'change' : 'suggestion';
-
-        const targetFileEl = document.getElementById('patch-target-file');
-        const actionTypeEl = document.getElementById('patch-action-type');
-        const impactEl = document.getElementById('patch-impact');
-        const riskEl = document.getElementById('patch-risk');
-        const summaryEl = document.getElementById('patch-summary-text');
-
-        if (targetFileEl) targetFileEl.textContent = targetFile;
-        if (actionTypeEl) actionTypeEl.textContent = changeAction;
-        if (impactEl) impactEl.textContent = `${Math.max(1, diffLines || 1)} líneas`;
-        if (riskEl) {
-          riskEl.textContent = risk;
-          riskEl.style.background = risk === 'Medio' ? 'rgba(250, 204, 21, 0.12)' : 'rgba(15, 118, 110, 0.12)';
-          riskEl.style.color = risk === 'Medio' ? '#fde68a' : '#b7f3eb';
-        }
-        if (summaryEl) {
-          summaryEl.textContent = buildNaturalPatchSummary(patchText, targetFile);
-        }
-        if (modeBadgeEl) {
-          modeBadgeEl.textContent = modeLabel;
-          modeBadgeEl.className = `patch-mode ${modeClass}`;
+      function buildApprovedFileContent(existingContent, rawPatch) {
+        const normalizedPatch = normalizePatchText(rawPatch);
+        if (!normalizedPatch) {
+          return existingContent;
         }
 
-        const confirmCopy = document.getElementById('approval-confirm-copy');
-        if (confirmCopy) {
-          confirmCopy.textContent = hasPatch
-            ? `Se modificará ${targetFile} dentro del workspace. Revisa la propuesta antes de confirmar.`
-            : `Se sugerirá una mejora para ${targetFile} dentro del workspace. No se escribirá ningún archivo hasta que la confirmes.`;
+        if (normalizedPatch.startsWith('---') && normalizedPatch.includes('+++')) {
+          const lines = normalizedPatch.split('\n');
+          let nextLines = existingContent.split('\n');
+          let inHunk = false;
+          let pendingInsert = [];
+
+          for (const line of lines) {
+            if (line.startsWith('--- ') || line.startsWith('+++ ') || line.startsWith('@@')) {
+              if (line.startsWith('@@')) {
+                inHunk = true;
+              }
+              continue;
+            }
+
+            if (!inHunk) {
+              continue;
+            }
+
+            if (line.startsWith('+')) {
+              pendingInsert.push(line.slice(1));
+              continue;
+            }
+
+            if (line.startsWith('-')) {
+              if (nextLines.length > 0) {
+                nextLines.shift();
+              }
+              continue;
+            }
+
+            if (line.length === 0) {
+              pendingInsert.push('');
+              continue;
+            }
+
+            if (pendingInsert.length) {
+              nextLines = [...nextLines.slice(0, nextLines.length), ...pendingInsert];
+              pendingInsert = [];
+            }
+          }
+
+          if (pendingInsert.length) {
+            nextLines = [...nextLines, ...pendingInsert];
+          }
+
+          return nextLines.join('\n');
+        }
+
+        return normalizedPatch;
+      }
+
+      async function approvePendingPatch() {
+        const patchText = normalizePatchText(state.pendingPatch || diffBox.textContent || '');
+        if (!patchText) {
+          setStatus('No hay cambios listos para aplicar');
+          approvalStatus.textContent = 'Sin cambios';
+          return false;
+        }
+
+        let targetPath = state.activeFile;
+        if (!targetPath) {
+          const requestedPath = window.prompt('Guardar cambios en archivo', 'nuevo-archivo.txt');
+          if (!requestedPath) {
+            return false;
+          }
+          targetPath = sanitizeRelativePath(requestedPath);
+        }
+
+        try {
+          const existingContent = await window.electronAPI.readFile(targetPath).catch(() => '');
+          const nextContent = buildApprovedFileContent(existingContent, patchText);
+          await window.electronAPI.writeFile(targetPath, nextContent);
+
+          state.activeFile = targetPath;
+          const activeTab = getActiveTab();
+          if (activeTab) {
+            activeTab.originalContent = nextContent;
+            activeTab.dirty = false;
+          } else {
+            state.tabs.push({
+              name: targetPath.split('/').pop(),
+              path: targetPath,
+              originalContent: nextContent,
+              dirty: false
+            });
+          }
+
+          editor.value = nextContent;
+          renderTabs();
+          updateActiveFileLabel();
+          pushWorkflowHistoryEntry('approved', patchText);
+          approvalStatus.textContent = 'Aprobado';
+          approvalStatus.style.color = '#bbf7d0';
+          diffBox.style.borderColor = 'rgba(34, 197, 94, 0.4)';
+          const summaryElement = document.getElementById('diff-summary');
+          if (summaryElement) {
+            summaryElement.textContent = `Cambios aplicados en ${targetPath}.`;
+          }
+          setStatus(`Cambios aplicados en ${targetPath}`);
+          recordDebug('patch-approved', { target: targetPath, size: nextContent.length });
+          return true;
+        } catch (error) {
+          console.error('approvePendingPatch failed', error);
+          recordDebug('patch-approved-error', { target: targetPath, error: String(error) });
+          approvalStatus.textContent = 'Error al aplicar';
+          approvalStatus.style.color = '#fecaca';
+          setStatus('No se pudieron guardar los cambios aplicados');
+          return false;
         }
       }
 
@@ -1624,7 +1629,7 @@
           enabled: true,
           capabilities: [],
           provider: 'ollama',
-          model: 'llama3.1',
+          model: 'qwen2.5-coder:0.5b',
           baseUrl: 'http://chat.nightslayer.com.ar:11434',
           apiKey: '',
           temperature: 0.4,
@@ -1739,7 +1744,7 @@
         const dynamicFields = {
           ollama: [
             { key: 'baseUrl', label: 'URL base', type: 'text', placeholder: 'http://chat.nightslayer.com.ar:11434' },
-            { key: 'model', label: 'Modelo', type: 'text', placeholder: 'llama3.1' }
+            { key: 'model', label: 'Modelo', type: 'text', placeholder: 'qwen2.5-coder:0.5b' }
           ],
           openai: [
             { key: 'apiKey', label: 'API Key', type: 'password', placeholder: 'sk-...' },
@@ -1767,7 +1772,7 @@
               ? `<select id="config-model" name="model">
                   ${modelOptions.map((modelName) => `<option value="${modelName}" ${selectedProfile.model === modelName ? 'selected' : ''}>${modelName}</option>`).join('')}
                 </select>`
-              : `<input id="config-model" name="model" type="text" value="${selectedProfile.model ?? ''}" placeholder="${selectedProfile.provider === 'openai' ? 'gpt-4o-mini' : 'llama3.1'}" />`}
+              : `<input id="config-model" name="model" type="text" value="${selectedProfile.model ?? ''}" placeholder="${selectedProfile.provider === 'openai' ? 'gpt-4o-mini' : 'qwen2.5-coder:0.5b'}" />`}
           </div>
         `;
 
@@ -1835,7 +1840,7 @@
           state.agentProfiles[state.activeAgent] = {
             ...getProfileForAgent(state.activeAgent),
             provider: nextProvider,
-            model: nextProvider === 'openai' ? 'gpt-4o-mini' : nextProvider === 'gemini' ? 'gemini-2.0-flash' : nextProvider === 'grok' ? 'grok-2-latest' : 'llama3.1'
+            model: nextProvider === 'openai' ? 'gpt-4o-mini' : nextProvider === 'gemini' ? 'gemini-2.0-flash' : nextProvider === 'grok' ? 'grok-2-latest' : 'qwen2.5-coder:0.5b'
           };
           state.agentConfig = { ...state.agentProfiles[state.activeAgent] };
           state.modelOptionsByAgent[state.activeAgent] = [];
@@ -2040,7 +2045,7 @@
                   ? `<select id="plugin-model-input">
                       ${availableModels.map((modelName) => `<option value="${modelName}" ${profile.model === modelName ? 'selected' : ''}>${modelName}</option>`).join('')}
                     </select>`
-                  : `<input id="plugin-model-input" type="text" value="${profile.model ?? ''}" placeholder="llama3.1" />`}
+                  : `<input id="plugin-model-input" type="text" value="${profile.model ?? ''}" placeholder="qwen2.5-coder:0.5b" />`}
               </div>
               <div class="field-row">
                 <label>URL base</label>
@@ -2204,8 +2209,7 @@
             model: currentProfile.model,
             baseUrl: currentProfile.baseUrl,
             apiKey: currentProfile.apiKey,
-            temperature: Number(currentProfile.temperature ?? 0.4),
-            executionMode: currentProfile.executionMode ?? 'manual'
+            temperature: Number(currentProfile.temperature ?? 0.4)
           });
         } catch (error) {
           console.warn('Agent config was not persisted to Electron runtime', error);
@@ -2213,6 +2217,66 @@
         setStatus(`Proveedor activo: ${providerLabel}`);
         chatLog.textContent = `Configuración guardada: ${providerLabel} · Agente ${currentProfile.agent}.`;
         closeConfiguration();
+      }
+
+      function persistDebugState() {
+        window.localStorage.setItem('nexio-debug-enabled', JSON.stringify(Boolean(state.debugEnabled)));
+      }
+
+      function recordDebug(label, payload = {}) {
+        const entry = {
+          time: new Date().toISOString(),
+          label,
+          payload
+        };
+
+        state.debugEntries.unshift(entry);
+        state.debugEntries = state.debugEntries.slice(0, 80);
+        if (state.debugEnabled) {
+          console.debug(`[nexio-debug] ${label}`, payload);
+        }
+        renderDebugModal();
+      }
+
+      function renderDebugModal() {
+        const container = document.getElementById('debug-list');
+        const toggle = document.getElementById('debug-toggle');
+        if (!container) {
+          return;
+        }
+
+        if (toggle) {
+          toggle.textContent = state.debugEnabled ? 'Depuración activada' : 'Depuración desactivada';
+        }
+
+        if (!state.debugEntries.length) {
+          container.innerHTML = '<div class="debug-item"><strong>Sin eventos.</strong> Activa la depuración para ver cada acción del sistema.</div>';
+          return;
+        }
+
+        container.innerHTML = state.debugEntries.map((entry) => `
+          <div class="debug-item">
+            <strong>${new Date(entry.time).toLocaleTimeString()}</strong> · ${entry.label}
+            ${Object.keys(entry.payload).length ? `<br>${JSON.stringify(entry.payload, null, 2)}` : ''}
+          </div>
+        `).join('');
+      }
+
+      function openDebugPanel() {
+        renderDebugModal();
+        const modal = document.getElementById('debug-modal');
+        if (modal) {
+          modal.classList.remove('hidden');
+          modal.setAttribute('aria-hidden', 'false');
+        }
+      }
+
+      function closeDebugPanel() {
+        const modal = document.getElementById('debug-modal');
+        if (modal) {
+          modal.classList.add('hidden');
+          modal.setAttribute('aria-hidden', 'true');
+        }
       }
 
       function setStatus(message) {
@@ -2324,16 +2388,31 @@
         const taskTitle = state.activeFile
           ? `Review active file: ${state.activeFile}`
           : 'Review workspace architecture';
+        const promptText = String(customPrompt || taskTitle).trim();
+        const runtimePrompt = customPrompt ? promptText : taskTitle;
+
+        if (customPrompt && promptText) {
+          appendIdeaChatMessage('user', promptText);
+        }
 
         setStatus('Running agent workflow...');
         setAgentStatus('ideas', 'in-use');
         setAgentStatus('planning', 'in-use');
         setAgentStatus('principal', 'in-use');
-        addAgentLog('Idea → Planificación', `Solicitud recibida: ${customPrompt || taskTitle}`);
-        chatLog.textContent = `Generando ideas y roadmap para ${taskTitle}...`;
+        addAgentLog('Idea → Planificación', `Solicitud recibida: ${promptText}`);
+        addAgentLog('Idea → Planificación', `Proveedor: ${state.agentConfig.provider} | Modelo: ${state.agentConfig.model} | Base URL: ${state.agentConfig.baseUrl}`);
+        console.log('[chat-debug] triggerAgentWorkflow', {
+          prompt: runtimePrompt,
+          provider: state.agentConfig.provider,
+          model: state.agentConfig.model,
+          baseUrl: state.agentConfig.baseUrl,
+          agent: state.agentConfig.agent,
+          activeFile: state.activeFile
+        });
+        appendIdeaChatMessage('agent', `Estoy revisando tu solicitud...`);
 
         try {
-          const result = await window.electronAPI.runAgentWorkflow(taskTitle, state.activeFile, {
+          const result = await window.electronAPI.runAgentWorkflow(runtimePrompt, state.activeFile, {
             provider: state.agentConfig.provider,
             agent: state.agentConfig.agent,
             model: state.agentConfig.model,
@@ -2341,15 +2420,19 @@
             apiKey: state.agentConfig.apiKey,
             temperature: Number(state.agentConfig.temperature ?? 0.4)
           });
+          console.log('[chat-debug] runAgentWorkflow result', result);
           if (!result || !result.ok) {
             setAgentStatus('ideas', 'offline');
             setAgentStatus('planning', 'offline');
             setAgentStatus('principal', 'offline');
-            chatLog.textContent = result?.message || 'The workflow could not complete.';
-            addAgentLog('Idea → Planificación', 'El flujo falló al ejecutar la revisión del contexto.');
+            appendIdeaChatMessage('agent', result?.message || 'El flujo no pudo completarse.');
+            addAgentLog('Idea → Planificación', `Error del flujo: ${result?.message || 'sin detalle'}`);
             return;
           }
 
+          const llmText = typeof result.data?.llmResponse?.text === 'string' ? result.data.llmResponse.text.trim() : '';
+          addAgentLog('Planificación → Principal', `Respuesta del runtime: provider=${result.data?.llmResponse?.provider ?? state.agentConfig.provider}, model=${result.data?.llmResponse?.metadata?.model ?? state.agentConfig.model}`);
+          addAgentLog('Planificación → Principal', `Preview de respuesta LLM: ${llmText ? llmText.slice(0, 180) : 'sin respuesta'}`);
           const ideaSuggestions = Array.isArray(result.data?.ideaResult?.data?.suggestions)
             ? result.data.ideaResult.data.suggestions.filter(Boolean)
             : [];
@@ -2365,7 +2448,7 @@
             ideaSuggestions,
             autocompleteExamples,
             roadmapTasks,
-            principalMessage,
+            principalMessage: llmText || principalMessage,
             fallbackPrompt: customPrompt || (state.activeFile ? `Quiero ayuda para continuar en ${state.activeFile}` : 'Quiero sugerencias de autocompletado y ejemplos de código para el editor')
           });
 
@@ -2381,38 +2464,43 @@
           state.latestWorkflowTaskId = result?.data?.taskId ?? state.latestWorkflowTaskId ?? null;
           renderCompletionSuggestions();
 
-          if (state.mode === 'ideas') {
-            chatLog.textContent = preview.suggestionsText;
-          } else {
-            chatLog.textContent = principalMessage;
-          }
+          const assistantReply = `He pasado tu solicitud por el flujo de Ideas → Planificación → Orquestación → Ejecución. La propuesta ya está organizada para revisión y no se devolvió código directo en el chat.`;
+          appendIdeaChatMessage('agent', assistantReply);
+
+          console.log('[chat-debug] staged flow response rendered', {
+            hasLlmText: Boolean(llmText),
+            provider: result.data?.llmResponse?.provider ?? state.agentConfig.provider,
+            model: result.data?.llmResponse?.metadata?.model ?? state.agentConfig.model,
+            stageCount: Array.isArray(result.data?.stageLlmResponses) ? result.data.stageLlmResponses.length : 0,
+            preview: llmText.slice(0, 200)
+          });
 
           addAgentLog('Planificación → Principal', principalMessage);
           addAgentLog('Principal → Plugins', `Se ejecutaron ${roadmapTasks.length || 1} tareas del flujo principal.`);
           diffBox.textContent = preview.taskPreview;
-          state.pendingPatch = preview.pendingPatch;
-          updatePatchSummary();
-          approvalStatus.textContent = result.data?.approvalStatus ?? 'Pendiente de revisión';
+          updateDiffSummary();
+          approvalStatus.textContent = result.data?.approvalStatus ?? 'Esperando revisión';
           approvalStatus.style.color = '#e2e8f0';
           diffBox.style.borderColor = 'rgba(148, 163, 184, 0.2)';
           setStatus('Flujo completado');
           setAgentStatus('ideas', 'online');
           setAgentStatus('planning', 'online');
           setAgentStatus('principal', 'online');
-
-          if (customPrompt) {
-            const trimmed = String(customPrompt).trim();
-            if (trimmed) {
-              chatLog.textContent = `${chatLog.textContent}\n\nPrompt: ${trimmed}`;
-            }
-          }
         } catch (error) {
-          console.error(error);
+          const errorMessage = error instanceof Error ? error.message : String(error ?? 'Unknown runtime error');
+          console.error('[chat-debug] triggerAgentWorkflow error', {
+            message: errorMessage,
+            stack: error instanceof Error ? error.stack : undefined,
+            prompt: runtimePrompt,
+            provider: state.agentConfig.provider,
+            model: state.agentConfig.model,
+            baseUrl: state.agentConfig.baseUrl
+          });
           setAgentStatus('ideas', 'offline');
           setAgentStatus('planning', 'offline');
           setAgentStatus('principal', 'offline');
-          chatLog.textContent = 'The AI workflow failed while invoking the desktop runtime.';
-          addAgentLog('Idea → Planificación', 'Hubo un error al ejecutar la tarea del agente.');
+          appendIdeaChatMessage('agent', `El flujo falló al invocar el runtime de escritorio: ${errorMessage}`);
+          addAgentLog('Idea → Planificación', `Error del agente: ${errorMessage}`);
           setStatus('Workflow failed');
         }
       }
@@ -2587,6 +2675,11 @@
         await openFile(selected);
       }
 
+      function sanitizeRelativePath(inputValue) {
+        const pretty = String(inputValue || '').trim().replace(/\\/g, '/').replace(/^\/+/, '');
+        return pretty || 'archivo-nuevo.txt';
+      }
+
       async function createNewFile() {
         const workspaceRoot = state.config?.workspaceRoot || null;
         if (!workspaceRoot) {
@@ -2600,20 +2693,79 @@
           return;
         }
 
-        const cleanName = fileName.trim();
-        if (!cleanName) {
-          return;
-        }
-
-        const relativePath = cleanName.replace(/\\/g, '/').replace(/^\/+/, '');
+        const cleanName = sanitizeRelativePath(fileName);
         try {
-          await window.electronAPI.writeFile(relativePath, '');
-          await openFile(relativePath, true);
-          setStatus(`Archivo creado: ${relativePath}`);
+          await window.electronAPI.writeFile(cleanName, '');
+          recordDebug('new-file', { path: cleanName, status: 'created' });
+          await openFile(cleanName, true);
+          setStatus(`Archivo creado: ${cleanName}`);
         } catch (error) {
           console.error(error);
+          recordDebug('new-file-error', { path: cleanName, error: String(error) });
           setStatus('No se pudo crear el archivo');
         }
+      }
+
+      async function saveCurrentFileAs() {
+        const defaultFile = state.activeFile
+          ? state.activeFile.split('/').pop() || 'archivo-nuevo.txt'
+          : 'archivo-nuevo.txt';
+        const requestedName = window.prompt('Guardar como...', defaultFile);
+        if (!requestedName) {
+          return false;
+        }
+
+        const targetPath = sanitizeRelativePath(requestedName);
+        const baseDir = state.activeFile ? state.activeFile.split('/').slice(0, -1).join('/') : '';
+        const finalPath = baseDir ? `${baseDir}/${targetPath}` : targetPath;
+
+        try {
+          await window.electronAPI.writeFile(finalPath, editor.value);
+          recordDebug('save-as', { from: state.activeFile, to: finalPath, size: editor.value.length });
+          state.activeFile = finalPath;
+          const existing = state.tabs.find((tab) => tab.path === finalPath);
+          if (existing) {
+            existing.originalContent = editor.value;
+            existing.dirty = false;
+          } else {
+            state.tabs.push({ name: finalPath.split('/').pop(), path: finalPath, originalContent: editor.value, dirty: false });
+          }
+          renderTabs();
+          updateActiveFileLabel();
+          setStatus(`Guardado como ${finalPath}`);
+          return true;
+        } catch (error) {
+          console.error(error);
+          recordDebug('save-as-error', { target: finalPath, error: String(error) });
+          setStatus('Fallo al guardar como');
+          return false;
+        }
+      }
+
+      async function saveAllFiles() {
+        const dirtyTabs = state.tabs.filter((tab) => tab.dirty);
+        if (!dirtyTabs.length) {
+          setStatus('No hay archivos con cambios pendientes');
+          return true;
+        }
+
+        let written = 0;
+        for (const tab of dirtyTabs) {
+          try {
+            await window.electronAPI.writeFile(tab.path, tab.path === state.activeFile ? editor.value : (tab.originalContent || ''));
+            tab.originalContent = tab.path === state.activeFile ? editor.value : tab.originalContent;
+            tab.dirty = false;
+            written += 1;
+          } catch (error) {
+            console.error(error);
+            recordDebug('save-all-error', { path: tab.path, error: String(error) });
+          }
+        }
+
+        renderTabs();
+        recordDebug('save-all', { files: written, total: dirtyTabs.length });
+        setStatus(`Se guardaron ${written}/${dirtyTabs.length} archivos`);
+        return written > 0;
       }
 
       async function closeCurrentWorkspace() {
@@ -2735,8 +2887,27 @@
 
       async function saveCurrentFile() {
         if (!state.activeFile) {
-          setStatus('No hay archivo activo para guardar');
-          return false;
+          const requestedName = window.prompt('Nombre del archivo para guardar', 'archivo-nuevo.txt');
+          if (!requestedName) {
+            return false;
+          }
+
+          const targetPath = sanitizeRelativePath(requestedName);
+          try {
+            await window.electronAPI.writeFile(targetPath, editor.value);
+            state.activeFile = targetPath;
+            state.tabs.push({ name: targetPath.split('/').pop(), path: targetPath, originalContent: editor.value, dirty: false });
+            recordDebug('save-new-file', { path: targetPath, size: editor.value.length });
+            setStatus(`Guardado ${targetPath}`);
+            renderTabs();
+            updateActiveFileLabel();
+            return true;
+          } catch (error) {
+            console.error(error);
+            recordDebug('save-new-file-error', { path: targetPath, error: String(error) });
+            setStatus('Fallo al guardar');
+            return false;
+          }
         }
 
         try {
@@ -2746,12 +2917,14 @@
             activeTab.originalContent = editor.value;
             activeTab.dirty = false;
           }
+          recordDebug('save-file', { path: state.activeFile, size: editor.value.length });
           setStatus(`Guardado ${state.activeFile}`);
           updateActiveFileLabel();
           renderTabs();
           return true;
         } catch (error) {
           console.error(error);
+          recordDebug('save-file-error', { path: state.activeFile, error: String(error) });
           setStatus('Fallo al guardar');
           return false;
         }
@@ -2798,8 +2971,9 @@
         }
 
         try {
+          state.debugEnabled = JSON.parse(window.localStorage.getItem('nexio-debug-enabled') ?? 'true');
+          recordDebug('bootstrap-start', { workspace: 'pending' });
           loadWorkflowHistory();
-          renderWorkflowHistory();
           state.agentConfig = getStoredAgentConfig();
           await loadPluginDefinitions();
           const config = await window.electronAPI.getConfig();
@@ -2810,6 +2984,7 @@
           renderTree(workspace);
           updateActiveFileLabel();
           setStatus(`Workspace listo: ${config.workspaceRoot}`);
+          recordDebug('workspace-loaded', { root: config.workspaceRoot, files: workspace.length });
 
           const firstFile = findFirstFile(workspace);
           if (firstFile) {
@@ -2817,6 +2992,7 @@
           }
         } catch (error) {
           console.error('Bootstrap failed:', error);
+          recordDebug('bootstrap-error', { message: String(error) });
           setStatus('Error al inicializar el workspace');
           chatLog.textContent = 'No se pudo inicializar el workspace. Revisa la conexión del backend de Electron.';
         }
@@ -2944,8 +3120,25 @@
         openConfigFromHeader();
       });
 
+      document.getElementById('menu-debug').addEventListener('click', () => {
+        openDebugPanel();
+      });
+
       document.getElementById('menu-plugins').addEventListener('click', () => {
         openPluginManager();
+      });
+
+      document.getElementById('debug-toggle')?.addEventListener('click', () => {
+        state.debugEnabled = !state.debugEnabled;
+        persistDebugState();
+        recordDebug('debug-toggle', { enabled: state.debugEnabled });
+      });
+
+      document.getElementById('debug-close')?.addEventListener('click', closeDebugPanel);
+      document.getElementById('debug-modal')?.addEventListener('click', (event) => {
+        if (event.target === event.currentTarget) {
+          closeDebugPanel();
+        }
       });
 
       document.querySelectorAll('.menu-item').forEach((button) => {
@@ -2961,12 +3154,18 @@
             }
           } else if (action === 'save-file') {
             await saveCurrentFile();
+          } else if (action === 'save-as-file') {
+            await saveCurrentFileAs();
+          } else if (action === 'save-all-files') {
+            await saveAllFiles();
           } else if (action === 'new-file') {
             await createNewFile();
           } else if (action === 'open-workspace') {
             await switchWorkspace();
           } else if (action === 'close-workspace') {
             await closeCurrentWorkspace();
+          } else if (action === 'debug-panel') {
+            openDebugPanel();
           } else if (action === 'config') {
             openConfiguration();
           }
@@ -2985,120 +3184,17 @@
         }
       });
 
-      function openApprovalConfirmModal(mode = 'apply') {
-        const modal = document.getElementById('approval-confirm-modal');
-        const title = document.getElementById('approval-confirm-title');
-        const copy = document.getElementById('approval-confirm-copy');
-        const applyButton = document.getElementById('approval-confirm-apply');
-        const discardButton = document.getElementById('approval-confirm-discard');
-
-        if (!modal || !title || !copy || !applyButton || !discardButton) return;
-
-        if (mode === 'discard') {
-          title.textContent = 'Descartar propuesta';
-          copy.textContent = `La propuesta para ${state.activeFile || 'el archivo activo'} se descartará y no se escribirá ningún cambio en el workspace.`;
-          applyButton.textContent = 'Descartar';
-          applyButton.dataset.mode = 'discard';
-          discardButton.style.display = 'none';
-        } else {
-          title.textContent = 'Aplicar cambios en el workspace';
-          copy.textContent = `Se modificará ${state.activeFile || 'el archivo activo'} dentro del workspace. Revisa la propuesta antes de confirmar.`;
-          applyButton.textContent = 'Aplicar cambios';
-          applyButton.dataset.mode = 'apply';
-          discardButton.style.display = 'inline-flex';
-        }
-
-        modal.classList.add('visible');
-        modal.setAttribute('aria-hidden', 'false');
-      }
-
-      function closeApprovalConfirmModal() {
-        const modal = document.getElementById('approval-confirm-modal');
-        if (!modal) return;
-        modal.classList.remove('visible');
-        modal.setAttribute('aria-hidden', 'true');
-      }
-
-      async function applyApprovedPatch() {
-        const patchText = String(state.pendingPatch || diffBox.textContent || '').trim();
-        const targetPath = state.activeFile || 'README.md';
-
-        try {
-          const result = await window.electronAPI.approveDiff(
-            state.latestWorkflowTaskId || `task-${Date.now()}`,
-            patchText,
-            targetPath,
-            {
-              agent: state.activeAgent || state.agentConfig.agent,
-              provider: state.agentConfig.provider,
-              model: state.agentConfig.model,
-              baseUrl: state.agentConfig.baseUrl,
-              startedAt: new Date().toISOString(),
-              snapshotHash: state.latestWorkflowTaskId || `snapshot-${Date.now()}`
-            }
-          );
-
-          if (!result || !result.ok) {
-            throw new Error(result?.message || 'La propuesta no pudo aplicarse.');
-          }
-
-          if (state.activeFile) {
-            const refreshed = await window.electronAPI.readFile(state.activeFile);
-            editor.value = refreshed;
-            const activeTab = getActiveTab();
-            if (activeTab) {
-              activeTab.originalContent = refreshed;
-              activeTab.dirty = false;
-            }
-          }
-
-          pushWorkflowHistoryEntry('approved', patchText);
-          approvalStatus.textContent = 'Cambio aplicado';
-          approvalStatus.style.color = '#bbf7d0';
-          diffBox.style.borderColor = 'rgba(34, 197, 94, 0.4)';
-          setStatus('Cambio aplicado');
-        } catch (error) {
-          console.error('Failed to approve patch', error);
-          approvalStatus.textContent = 'No se pudo aplicar';
-          approvalStatus.style.color = '#fca5a5';
-          diffBox.style.borderColor = 'rgba(239, 68, 68, 0.4)';
-          setStatus('No se pudo aplicar');
-        } finally {
-          closeApprovalConfirmModal();
-        }
-      }
-
-      document.querySelector('.approve-btn').addEventListener('click', () => {
-        openApprovalConfirmModal();
-      });
-
-      document.getElementById('approval-confirm-apply')?.addEventListener('click', async () => {
-        const mode = document.getElementById('approval-confirm-apply')?.dataset.mode || 'apply';
-        if (mode === 'discard') {
-          pushWorkflowHistoryEntry('rejected', String(state.pendingPatch || diffBox.textContent || ''));
-          approvalStatus.textContent = 'Cambio descartado';
-          approvalStatus.style.color = '#fecaca';
-          diffBox.style.borderColor = 'rgba(239, 68, 68, 0.4)';
-          setStatus('Cambio descartado');
-          closeApprovalConfirmModal();
-          return;
-        }
-
-        await applyApprovedPatch();
-      });
-
-      document.getElementById('approval-confirm-cancel')?.addEventListener('click', () => {
-        closeApprovalConfirmModal();
-      });
-
-      document.getElementById('approval-confirm-modal')?.addEventListener('click', (event) => {
-        if (event.target === event.currentTarget) {
-          closeApprovalConfirmModal();
-        }
+      document.querySelector('.approve-btn').addEventListener('click', async () => {
+        await approvePendingPatch();
       });
 
       document.querySelector('.reject-btn').addEventListener('click', () => {
-        openApprovalConfirmModal('discard');
+        pushWorkflowHistoryEntry('rejected', String(state.pendingPatch || diffBox.textContent || ''));
+        approvalStatus.textContent = 'Descartado';
+        approvalStatus.style.color = '#fecaca';
+        diffBox.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+        setStatus('Cambios descartados');
+        recordDebug('patch-rejected', { patchLength: String(state.pendingPatch || diffBox.textContent || '').length });
       });
 
       const fileAttachmentInput = document.getElementById('file-attachment-input');
@@ -3132,11 +3228,9 @@
         if (!promptValue) {
           return;
         }
-        appendIdeaChatMessage('user', promptValue);
         if (state.attachedFileName) {
           appendIdeaChatMessage('agent', `Se usará el archivo adjunto ${state.attachedFileName} como contexto adicional.`);
         }
-        chatLog.textContent = `Prompt received: ${promptValue}`;
         await triggerAgentWorkflow(promptValue);
         promptInput.value = '';
         fileAttachmentInput.value = '';
@@ -3149,11 +3243,9 @@
           if (!promptValue) {
             return;
           }
-          appendIdeaChatMessage('user', promptValue);
           if (state.attachedFileName) {
             appendIdeaChatMessage('agent', `Se usará el archivo adjunto ${state.attachedFileName} como contexto adicional.`);
           }
-          chatLog.textContent = `Prompt received: ${promptValue}`;
           await triggerAgentWorkflow(promptValue);
           promptInput.value = '';
           fileAttachmentInput.value = '';

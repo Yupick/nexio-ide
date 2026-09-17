@@ -2,7 +2,6 @@ import { IdeasAgent } from '../../src/agents/ideas-agent';
 import { PlanningAgent } from '../../src/agents/planning-agent';
 import { PrincipalAgent } from '../../src/agents/principal-agent';
 import { AgentOrchestrator } from '../../src/backend/orchestrator';
-import { WorkflowRuntime } from '../../src/backend/workflow-runtime';
 import { buildWorkflowPreview } from '../../src/backend/agent-preview';
 import { LlmManager } from '../../src/backend/llm/llm-manager';
 import { createProjectSnapshot } from '../../src/backend/project-snapshot';
@@ -310,37 +309,6 @@ describe('Nexio IDE scaffold', () => {
     expect(rendered).toContain('Nexio IDE');
   });
 
-  test('workflow runtime auto-approves execution when autonomous mode is enabled and keeps it inside the workspace root', async () => {
-    const runtime = new WorkflowRuntime({
-      provider: 'ollama',
-      agent: 'principal',
-      model: 'qwen2.5-coder:0.5b',
-      baseUrl: 'http://chat.nightslayer.com.ar:11434',
-      apiKey: '',
-      temperature: 0.4,
-      executionMode: 'autonomous'
-    });
-
-    const snapshot = {
-      name: 'nexio-ide',
-      rootPath: process.cwd(),
-      files: ['README.md', 'src/ui/index.html'],
-      lastUpdated: '2026-09-17T00:00:00Z'
-    };
-
-    const result = await runtime.runWorkflow(snapshot, {
-      id: 'task-autonomous-1',
-      title: 'Create a simple HTML landing page inside the active workspace',
-      description: 'Generate a minimal HTML landing page in the workspace root and validate the result.',
-      priority: 'high',
-      dependencies: []
-    });
-
-    expect(result.ok).toBe(true);
-    expect(result.data).toMatchObject({ approvalStatus: 'approved' });
-    expect(String(result.data?.pendingPatch ?? '')).toContain('HTML');
-  });
-
   test('orchestrator combines ideas and planning into a concrete result', async () => {
     const orchestrator = new AgentOrchestrator();
     const task: AgentTask = {
@@ -365,12 +333,12 @@ describe('Nexio IDE scaffold', () => {
     expect(result.data).toHaveProperty('roadmap');
   });
 
-  test('orchestrator creates execution threads with owners and dependency tracking for autonomous multi-agent work', async () => {
+  test('orchestrator creates execution threads with planning state and dependency ownership', async () => {
     const orchestrator = new AgentOrchestrator();
     const task: AgentTask = {
-      id: 'task-threads-1',
-      title: 'Build a small dashboard and validate the plugin contract',
-      description: 'Create the dashboard scaffold and validate plugin behavior in parallel.',
+      id: 'task-thread-1',
+      title: 'Refine agent execution flow',
+      description: 'Coordinate ideas, planning, orchestration, and specialized execution under approval control.',
       priority: 'high',
       dependencies: []
     };
@@ -378,25 +346,111 @@ describe('Nexio IDE scaffold', () => {
     const result = await orchestrator.runIdeaWorkflow(
       {
         name: 'nexio-ide',
-        rootPath: process.cwd(),
-        files: ['src/ui/index.html', 'src/backend/plugin-manager.ts'],
-        lastUpdated: '2026-09-17T00:00:00Z'
+        rootPath: '/workspace',
+        files: ['src/agents/ideas-agent.ts', 'src/backend/orchestrator.ts'],
+        lastUpdated: '2026-09-10T00:00:00Z'
       },
       task
     );
 
-    const resultData = result.data as any;
+    expect(result.ok).toBe(true);
+    const threads = Array.isArray((result.data as any)?.executionThreads) ? (result.data as any).executionThreads : [];
+    expect(threads.length).toBeGreaterThan(0);
+    expect(threads[0]).toMatchObject({
+      status: 'pending',
+      owner: 'orchestrator',
+      delegateTo: expect.any(String)
+    });
+    expect(Array.isArray(threads[0].dependencies)).toBe(true);
+  });
+
+  test('editor plugin handles code edits with an approval-ready patch', async () => {
+    const agent = new PrincipalAgent([
+      {
+        id: 'editor-plugin',
+        name: 'Editor Plugin',
+        type: 'agent',
+        version: '0.1.0',
+        capabilities: ['edit', 'code', 'implement', 'fix', 'create'],
+        async init() {},
+        async execute(task: AgentTask) {
+          return {
+            ok: true,
+            message: `Editor plugin prepared a patch for ${task.title}.`,
+            data: {
+              plugin: 'editor-plugin',
+              targetPath: 'src/demo.ts',
+              patch: '--- src/demo.ts\n+++ src/demo.ts\n@@\n+export const demo = true;\n',
+              approvalRequired: true
+            }
+          };
+        }
+      } as any
+    ]);
+
+    const context: AgentContext = {
+      snapshot: {
+        name: 'nexio-ide',
+        rootPath: '/workspace',
+        files: ['src/demo.ts'],
+        lastUpdated: '2026-09-10T00:00:00Z'
+      },
+      sandbox: {
+        allowedRoots: ['/workspace'],
+        readOnly: true
+      }
+    };
+
+    const task: AgentTask = {
+      id: 'task-edit-approval-1',
+      title: 'Implement the demo helper',
+      description: 'Create a helper function and prepare the patch for review before writing it to disk.',
+      priority: 'high',
+      dependencies: []
+    };
+
+    const result = await agent.execute(context, task);
 
     expect(result.ok).toBe(true);
-    expect(Array.isArray(resultData?.threads)).toBe(true);
-    expect(resultData?.threads.length).toBeGreaterThan(0);
-    expect(resultData?.threads[0]).toMatchObject({
-      owner: expect.any(String),
-      status: expect.any(String),
-      dependencies: expect.any(Array)
-    });
-    expect(Array.isArray(resultData?.messageBus)).toBe(true);
+    expect((result.data as any)?.taskDispatch).toEqual(['editor-plugin']);
+    expect((result.data as any)?.patchSummary[0]).toMatchObject({ plugin: 'editor-plugin' });
   });
+
+  test('workflow runtime stages LLM calls across the agent pipeline instead of returning one direct chat answer', async () => {
+    const { WorkflowRuntime } = await import('../../src/backend/workflow-runtime');
+    const runtime = new WorkflowRuntime({
+      provider: 'ollama',
+      agent: 'principal',
+      model: 'qwen2.5-coder:0.5b',
+      baseUrl: 'http://chat.nightslayer.com.ar:11434',
+      apiKey: '',
+      temperature: 0.4
+    });
+
+    const result = await runtime.runWorkflow(
+      {
+        name: 'nexio-ide',
+        rootPath: process.cwd(),
+        files: ['src/ui/index.html', 'src/backend/orchestrator.ts'],
+        lastUpdated: '2026-09-10T00:00:00Z'
+      },
+      {
+        id: 'task-stage-chain',
+        title: 'Genera una página HTML básica',
+        description: 'Elige la ruta del flujo de ideas a planificación a ejecución sin devolver código directo al chat del usuario.',
+        priority: 'high',
+        dependencies: [],
+        metadata: {
+          prompt: 'Genera una página HTML básica',
+          language: 'html'
+        }
+      }
+    );
+
+    expect(result.ok).toBe(true);
+    expect(Array.isArray((result.data as any)?.stageLlmResponses)).toBe(true);
+    expect((result.data as any)?.stageLlmResponses.map((entry: any) => entry.stage)).toEqual(expect.arrayContaining(['ideas', 'planning', 'orchestrator', 'principal']));
+  }, 90000);
 
   test('llm manager falls back between providers when primary fails and retains execution metadata', async () => {
     const manager = new LlmManager();
@@ -421,6 +475,45 @@ describe('Nexio IDE scaffold', () => {
       snapshotHash: 'abc123'
     });
   });
+
+  test('workflow runtime uses the configured LLM provider for a real user prompt', async () => {
+    const { WorkflowRuntime } = await import('../../src/backend/workflow-runtime');
+    const runtime = new WorkflowRuntime({
+      provider: 'ollama',
+      agent: 'principal',
+      model: 'qwen2.5-coder:0.5b',
+      baseUrl: 'http://chat.nightslayer.com.ar:11434',
+      apiKey: '',
+      temperature: 0.4
+    });
+
+    const result = await runtime.runWorkflow(
+      {
+        name: 'nexio-ide',
+        rootPath: process.cwd(),
+        files: ['src/ui/index.html', 'src/backend/workflow-runtime.ts'],
+        lastUpdated: '2026-09-10T00:00:00Z'
+      },
+      {
+        id: 'task-llm-real',
+        title: '¿Cuál es el siguiente paso para validar la conexión con Ollama?',
+        description: 'Verifica que la entrada del chat realmente llama al modelo configurado.',
+        priority: 'high',
+        dependencies: [],
+        metadata: {
+          prompt: '¿Cuál es el siguiente paso para validar la conexión con Ollama?',
+          language: 'typescript'
+        }
+      }
+    );
+
+    expect(result.ok).toBe(true);
+    expect(result.data).toHaveProperty('llmResponse');
+    expect(result.data?.llmResponse).toMatchObject({
+      provider: 'ollama',
+      text: expect.any(String)
+    });
+  }, 30000);
 
   test('workflow preview falls back to the principal result when no suggestions are available', () => {
     const result = buildWorkflowPreview({
