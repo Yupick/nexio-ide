@@ -7,24 +7,33 @@ Validar que el IDE ofrece una experiencia de uso estable, comprensible y segura 
 - [x] Arranque del shell principal
 - [x] Vista del workspace y panel de exploración
 - [x] Vista del editor en shell
-- [x] Panel de AI Console
+- [x] Panel de agentes y resumen visual del workflow
 - [x] Panel de roadmap y ejecución
 - [x] Preview de diff
 - [x] Acciones de aprobación y rechazo
 - [x] Estado visual del approval flow
+- [x] Chat de ideas con sesiones y selección de modelo
+- [x] Cancelación del workflow mediante IPC
+- [x] Cambios multiarchivo con aplicación atómica
 
 ## Seguridad y sandbox
 - [x] Bloqueo de rutas fuera del workspace
 - [x] Validación de traversal y symlink escapes
 - [x] Restricción de accesos no autorizados
 - [x] Revisión manual de permisos por agente
+- [x] Plugins desactivados no se cargan
+- [x] Autoaprobación restringida y auditada por plugin
+- [x] Conflictos de contenido base bloquean la aplicación
 
 ## Calidad y pruebas
 - [x] Unit tests del core
 - [x] Tests del workflow operativo
 - [x] Smoke UI tests
-- [x] Validación de flujo completo con un caso real de tarea
+- [ ] Flujo completo de negocio automatizado contra un workspace temporal de Electron
 - [x] Pruebas de regresión adicionales sobre plugins
+- [x] Suite completa: 8 suites y 57 tests
+- [x] Smoke E2E: 3 escenarios
+- [x] Build TypeScript sin errores
 
 ## Release candidate gate
 - [x] 0 bugs críticos
@@ -46,4 +55,4 @@ Validar que el IDE ofrece una experiencia de uso estable, comprensible y segura 
 - [x] Checklist de preparación para beta interna y revisión de calidad del producto
 
 ## Observaciones
-La base funcional queda validada para una etapa beta interna con evidencia real del flujo de trabajo, empaquetado reproducible y control de seguridad del workspace. El siguiente cierre recomendado es la finalización del release GA con monitoreo y observabilidad operativa.
+La base funcional y los controles de seguridad quedan validados para el release 1.1.0. La automatización de un caso completo de negocio dentro de una instancia Electron real y la migración a Monaco permanecen fuera de este cierre y deben tratarse como trabajo posterior, no como evidencia de esta release.

@@ -4,7 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import type { PluginContext, PluginDefinition, PluginInstance } from '../shared/types';
+import type { PluginContext, PluginDefinition, PluginInstance, PluginRuntimeProfile } from '../shared/types';
 
 export class PluginManager {
   private readonly pluginsDir: string;
@@ -27,7 +27,7 @@ export class PluginManager {
     return sourceEntry;
   }
 
-  public async loadAll(context: PluginContext): Promise<PluginInstance[]> {
+  public async loadAll(context: PluginContext, profiles: Record<string, PluginRuntimeProfile> = {}): Promise<PluginInstance[]> {
     if (!fs.existsSync(this.pluginsDir)) {
       return [];
     }
@@ -38,6 +38,11 @@ export class PluginManager {
     const loaded: PluginInstance[] = [];
 
     for (const pluginDir of pluginDirs) {
+      if (profiles[pluginDir]?.enabled === false) {
+        context.logger(`Plugin ${pluginDir} is disabled by runtime configuration.`);
+        continue;
+      }
+
       const pluginEntry = this.resolvePluginEntry(pluginDir);
       if (!fs.existsSync(pluginEntry)) {
         continue;
@@ -50,9 +55,13 @@ export class PluginManager {
         continue;
       }
 
-      const instance = factory(context);
+      const profile = profiles[pluginDir] ?? {};
+      const instance = factory({ ...context, config: profile });
       if (instance && typeof instance.execute === 'function') {
-        await instance.init(context);
+        if (Array.isArray(profile.capabilities)) {
+          instance.capabilities = [...profile.capabilities];
+        }
+        await instance.init({ ...context, config: profile });
         loaded.push(instance);
       }
     }

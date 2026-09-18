@@ -1,6 +1,14 @@
 import { WorkflowRuntime } from '../../src/backend/workflow-runtime';
 import type { AgentTask, ProjectSnapshot } from '../../src/shared/types';
 
+beforeAll(() => {
+  jest.spyOn(global, 'fetch').mockRejectedValue(new Error('offline test provider'));
+});
+
+afterAll(() => {
+  jest.restoreAllMocks();
+});
+
 describe('workflow runtime', () => {
   test('creates an end-to-end operational workflow state', async () => {
     const runtime = new WorkflowRuntime();
@@ -29,6 +37,104 @@ describe('workflow runtime', () => {
       taskId: 'wf-001',
       agent: 'principal',
       provider: 'ollama'
+    });
+  });
+
+  test('emits ordered workflow events for each agent stage', async () => {
+    const runtime = new WorkflowRuntime({
+      provider: 'local',
+      agent: 'principal',
+      model: 'local-model',
+      baseUrl: 'http://localhost',
+      apiKey: '',
+      temperature: 0.2
+    });
+    const events: string[] = [];
+
+    await runtime.runWorkflow({
+      name: 'nexio-ide',
+      rootPath: process.cwd(),
+      files: ['src/ui/index.html'],
+      lastUpdated: '2026-09-10T00:00:00Z'
+    }, {
+      id: 'wf-events-001',
+      title: 'Emit workflow events',
+      description: 'Verify observable workflow stages.',
+      priority: 'medium',
+      dependencies: []
+    }, (event) => events.push(`${event.type}:${event.stage ?? 'workflow'}`));
+
+    expect(events[0]).toBe('workflow-started:workflow');
+    expect(events).toEqual(expect.arrayContaining([
+      'stage-started:ideas',
+      'stage-completed:ideas',
+      'stage-started:planning',
+      'stage-completed:planning',
+      'stage-started:orchestrator',
+      'stage-completed:orchestrator',
+      'stage-started:principal',
+      'stage-completed:principal',
+      'workflow-completed:workflow'
+    ]));
+  });
+
+  test('cancels before starting a workflow when requested', async () => {
+    const runtime = new WorkflowRuntime({
+      provider: 'local',
+      agent: 'principal',
+      model: 'local-model',
+      baseUrl: 'http://localhost',
+      apiKey: '',
+      temperature: 0.2
+    });
+    const events: string[] = [];
+
+    await expect(runtime.runWorkflow({
+      name: 'nexio-ide',
+      rootPath: process.cwd(),
+      files: [],
+      lastUpdated: '2026-09-10T00:00:00Z'
+    }, {
+      id: 'wf-cancelled-001',
+      title: 'Cancel workflow',
+      description: 'Verify cancellation before provider work.',
+      priority: 'low',
+      dependencies: []
+    }, (event) => events.push(event.type), () => true)).rejects.toThrow('WORKFLOW_CANCELLED');
+
+    expect(events).toEqual(['workflow-started', 'workflow-cancelled']);
+  });
+
+  test('preserves the active idea session and model in execution metadata', async () => {
+    const runtime = new WorkflowRuntime({
+      provider: 'local',
+      agent: 'principal',
+      model: 'session-model',
+      baseUrl: 'http://localhost',
+      apiKey: '',
+      temperature: 0.2
+    });
+
+    const result = await runtime.runWorkflow({
+      name: 'nexio-ide',
+      rootPath: process.cwd(),
+      files: ['src/ui/index.html'],
+      lastUpdated: '2026-09-10T00:00:00Z'
+    }, {
+      id: 'wf-session-001',
+      title: 'Preserve idea session',
+      description: 'Keep correlation metadata for the active idea session.',
+      priority: 'medium',
+      dependencies: [],
+      metadata: {
+        ideaSessionId: 'session-42',
+        ideaModel: 'session-model'
+      }
+    });
+
+    expect(result.data?.executionMetadata).toMatchObject({
+      ideaSessionId: 'session-42',
+      ideaModel: 'session-model'
     });
   });
 

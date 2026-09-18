@@ -39,9 +39,10 @@ export class OllamaConnector implements LlmConnector {
   public async complete(request: LlmRequest): Promise<LlmResponse> {
     const config = resolveLlmRuntimeConfig('ollama');
     const model = request.model ?? config.model;
+    const timeoutMs = Math.min(config.timeoutMs, 8000);
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), config.timeoutMs);
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
       const response = await fetch(`${config.ollamaBaseUrl.replace(/\/$/, '')}/api/generate`, {

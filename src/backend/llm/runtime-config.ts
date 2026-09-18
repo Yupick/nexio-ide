@@ -33,6 +33,6 @@ export function resolveLlmRuntimeConfig(provider: LlmProvider): LlmRuntimeConfig
     geminiBaseUrl: process.env.GEMINI_BASE_URL?.trim() || 'https://generativelanguage.googleapis.com',
     grokApiKey: process.env.GROK_API_KEY?.trim() || undefined,
     grokBaseUrl: process.env.GROK_BASE_URL?.trim() || 'https://api.x.ai/v1',
-    timeoutMs: readNumber('LLM_TIMEOUT_MS', 30000)
+    timeoutMs: readNumber('LLM_TIMEOUT_MS', 8000)
   };
 }

@@ -7,13 +7,17 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { createAppConfig, defaultAgentRuntimeSettings, normalizeAgentKey, type AgentRuntimeSettings } from '../backend/config';
+import { ExecutionManager } from '../backend/execution-manager';
 import { PluginManager } from '../backend/plugin-manager';
 import { createProjectSnapshot } from '../backend/project-snapshot';
 import { WorkflowRuntime } from '../backend/workflow-runtime';
 import { listWorkspace, readWorkspaceFile, writeWorkspaceFile } from '../backend/workspace-service';
+import type { ApprovalDecision, AgentTask, PluginRuntimeProfile, WorkflowEvent, WorkflowRunOptions } from '../shared/types';
 
 let workspaceRoot = process.env.NEXIO_WORKSPACE_ROOT ?? process.cwd();
 let agentRuntimeSettings: AgentRuntimeSettings = { ...defaultAgentRuntimeSettings };
+let executionManager: ExecutionManager | null = null;
+const workflowCancellations = new Map<string, { cancel: () => void; isCancelled: () => boolean }>();
 const appConfigPath = path.join(app.getPath('userData'), 'nexio-app-config.json');
 const pluginConfigPath = path.join(app.getPath('userData'), 'nexio-plugin-config.json');
 const pluginDirectory = fs.existsSync(path.resolve(process.cwd(), 'dist', 'src', 'plugins'))
@@ -73,9 +77,21 @@ function persistPluginConfig(pluginProfiles: Record<string, Record<string, unkno
   writePersistedJson(pluginConfigPath, pluginProfiles);
 }
 
+function readPluginProfiles(): Record<string, PluginRuntimeProfile> {
+  return readPersistedJson<Record<string, PluginRuntimeProfile>>(pluginConfigPath, {});
+}
+
 function setWorkspaceRoot(nextRoot: string): string {
   workspaceRoot = path.resolve(nextRoot);
+  executionManager = new ExecutionManager(path.join(workspaceRoot, '.nexio', 'workflow-history.json'));
   return workspaceRoot;
+}
+
+function getExecutionManager(): ExecutionManager {
+  if (!executionManager) {
+    executionManager = new ExecutionManager(path.join(workspaceRoot, '.nexio', 'workflow-history.json'));
+  }
+  return executionManager;
 }
 
 function createWindow(): void {
@@ -119,6 +135,7 @@ function createWindow(): void {
 
 app.whenReady().then(() => {
   hydrateRuntimeConfig();
+  getExecutionManager();
 
   ipcMain.handle('app:get-config', () => ({
     environment: 'development',
@@ -220,15 +237,42 @@ app.whenReady().then(() => {
     return true;
   });
 
-  ipcMain.handle('agent:run-workflow', async (_event, taskTitle?: string, targetFile?: string | null, runtimeConfig?: Partial<AgentRuntimeSettings>) => {
+  ipcMain.handle('approval:history', () => getExecutionManager().getHistory());
+
+  ipcMain.handle('approval:decide', async (_event, decision: ApprovalDecision) => {
+    if (!decision || typeof decision.taskId !== 'string' || typeof decision.approved !== 'boolean' || (!decision.change && !decision.changes?.length)) {
+      throw new Error('Approval decision requires a task id and structured change.');
+    }
+
+    const task: AgentTask = {
+      id: decision.taskId,
+      title: 'Workflow approval decision',
+      description: 'Approval decision submitted by the desktop UI.',
+      priority: 'high',
+      dependencies: []
+    };
+
+    return getExecutionManager().decideApproval(task, {
+      approved: decision.approved,
+      change: decision.change,
+      changes: decision.changes,
+      patch: decision.change?.patch ?? decision.changes?.map((change) => change.patch).join('\n\n') ?? '',
+      targetPath: decision.change?.targetPath ?? decision.changes?.[0]?.targetPath,
+      metadata: decision.metadata
+    }, workspaceRoot);
+  });
+
+  ipcMain.handle('agent:run-workflow', async (event, taskTitle?: string, targetFile?: string | null, runtimeConfig?: WorkflowRunOptions) => {
+    const { ideaSessionId, ideaModel, autoApproveChanges, ...runtimeOverrides } = runtimeConfig ?? {};
     const resolvedConfig = {
       ...agentRuntimeSettings,
-      ...(runtimeConfig ?? {})
+      ...runtimeOverrides,
+      ...(ideaModel ? { model: ideaModel } : {})
     };
     const snapshot = createProjectSnapshot(workspaceRoot);
-    const runtime = new WorkflowRuntime(resolvedConfig);
+    const runtime = new WorkflowRuntime(resolvedConfig, readPluginProfiles());
     const task = {
-      id: `task-${Date.now()}`,
+      id: runtimeConfig?.runId || `task-${Date.now()}`,
       title: taskTitle || 'Review current workspace',
       description: targetFile
         ? `Inspect ${targetFile} in the current workspace and propose an approval-ready action plan.`
@@ -238,7 +282,9 @@ app.whenReady().then(() => {
       metadata: {
         targetFile: targetFile ?? null,
         prompt: taskTitle ?? 'Review current workspace',
-        language: 'typescript'
+        language: 'typescript',
+        ...(ideaSessionId ? { ideaSessionId } : {}),
+        ...(ideaModel ? { ideaModel } : {})
       }
     };
 
@@ -251,7 +297,64 @@ app.whenReady().then(() => {
       targetFile: targetFile ?? null
     });
 
-    const result = await runtime.runWorkflow(snapshot, task);
+    let cancelled = false;
+    workflowCancellations.set(task.id, {
+      cancel: () => { cancelled = true; },
+      isCancelled: () => cancelled
+    });
+
+    let result;
+    try {
+      result = await runtime.runWorkflow(snapshot, task, (workflowEvent: WorkflowEvent) => {
+        event.sender.send('workflow:event', workflowEvent);
+      }, () => cancelled);
+    } catch (error) {
+      if (error instanceof Error && error.message === 'WORKFLOW_CANCELLED') {
+        return { ok: false, message: 'Workflow cancelado por el usuario.', data: { taskId: task.id, status: 'cancelled' } };
+      }
+      throw error;
+    } finally {
+      workflowCancellations.delete(task.id);
+    }
+    const resultData = result.data && typeof result.data === 'object'
+      ? result.data as Record<string, unknown>
+      : null;
+    const changes = Array.isArray(resultData?.changes)
+      ? resultData.changes.filter((change): change is { targetPath: string; patch: string; pluginId?: string } => Boolean(change && typeof change === 'object' && typeof (change as Record<string, unknown>).targetPath === 'string' && typeof (change as Record<string, unknown>).patch === 'string'))
+      : [];
+    const pluginProfiles = readPluginProfiles();
+    const autoApprovalAuthorized = Boolean(autoApproveChanges)
+      && changes.length > 0
+      && changes.every((change) => Boolean(change.pluginId && pluginProfiles[change.pluginId]?.autoApprove === true));
+
+    if (autoApproveChanges && changes.length > 0 && autoApprovalAuthorized) {
+      for (const change of changes) {
+        await getExecutionManager().decideApproval(task, {
+          approved: true,
+          change,
+          patch: change.patch,
+          targetPath: change.targetPath,
+          metadata: {
+            ...(resultData?.executionMetadata && typeof resultData.executionMetadata === 'object' ? resultData.executionMetadata as Record<string, unknown> : {}),
+            autoApproved: true,
+            pluginId: change.pluginId
+          }
+        }, workspaceRoot);
+      }
+
+      if (resultData) {
+        resultData.changes = [];
+        resultData.approvalStatus = 'approved';
+        resultData.autoApproval = { applied: true, changeCount: changes.length };
+      }
+    } else if (autoApproveChanges && resultData) {
+      resultData.autoApproval = {
+        applied: false,
+        reason: changes.length === 0
+          ? 'No hay cambios estructurados para autoaprobar.'
+          : 'Los plugins responsables no tienen autoaprobación autorizada.'
+      };
+    }
     const llmResponse = result.data && typeof result.data === 'object' ? (result.data as Record<string, unknown>).llmResponse as Record<string, unknown> | undefined : undefined;
     console.log('[electron main] workflow result', {
       taskId: task.id,
@@ -261,6 +364,15 @@ app.whenReady().then(() => {
       responsePreview: String((llmResponse?.text as string | undefined) ?? '').slice(0, 500)
     });
     return result;
+  });
+
+  ipcMain.handle('agent:cancel-workflow', (_event, taskId: string) => {
+    const workflow = workflowCancellations.get(taskId);
+    if (!workflow) {
+      return { ok: false, message: 'No hay un workflow activo con ese identificador.' };
+    }
+    workflow.cancel();
+    return { ok: true, message: 'Solicitud de cancelación enviada.' };
   });
 
   createWindow();

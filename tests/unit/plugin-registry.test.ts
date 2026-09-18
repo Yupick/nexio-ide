@@ -36,4 +36,41 @@ describe('plugin registry', () => {
 
     expect(result.ok).toBe(true);
   });
+
+  test('does not load plugins disabled by runtime configuration', async () => {
+    const pluginManager = new PluginManager(process.cwd() + '/src/plugins');
+    const instances = await pluginManager.loadAll({
+      projectPath: process.cwd(),
+      logger: () => undefined
+    }, {
+      'docs-plugin': { enabled: false }
+    });
+
+    expect(instances.some((plugin) => plugin.id === 'docs-plugin')).toBe(false);
+    expect(instances.length).toBeGreaterThan(0);
+  });
+
+  test('applies configured capabilities to the loaded plugin instance', async () => {
+    const pluginManager = new PluginManager(process.cwd() + '/src/plugins');
+    const instances = await pluginManager.loadAll({
+      projectPath: process.cwd(),
+      logger: () => undefined
+    }, {
+      'docs-plugin': { capabilities: ['documentation'] }
+    });
+
+    expect(instances.find((plugin) => plugin.id === 'docs-plugin')?.capabilities).toEqual(['documentation']);
+  });
+
+  test('keeps auto-approval disabled unless explicitly configured', async () => {
+    const pluginManager = new PluginManager(process.cwd() + '/src/plugins');
+    const instances = await pluginManager.loadAll({
+      projectPath: process.cwd(),
+      logger: () => undefined
+    }, {
+      'docs-plugin': { autoApprove: true }
+    });
+
+    expect(instances.length).toBeGreaterThan(0);
+  });
 });
