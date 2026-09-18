@@ -205,7 +205,18 @@ Dejar el producto en un estado de pruebas internas y de validación de calidad, 
 - Soporte y monitoreo definidos para producción.
 
 ## Estado actual del roadmap
-El proyecto ya consolidó la base funcional y la organización técnica; el siguiente bloque clave es la transición desde prototipo validado hacia release candidate y despliegue real. La roadmap previa cubría la base técnica; esta sección añade la capa de producción con sprints y gate de salida.
+El proyecto consolidó la base funcional y el hardening principal. La release 1.1.0 está lista para cierre GitFlow con evidencia reproducible de build, tests, smoke E2E, sandbox, plugins y aplicación atómica de cambios. Monaco, historial visual completo y E2E de negocio en Electron real permanecen como backlog posterior.
+
+### Cierre verificado 2026-09-18
+- [x] Plugins desactivados y capacidades configuradas se aplican en runtime.
+- [x] Autoaprobación backend restringida y auditable.
+- [x] Eventos de progreso y cancelación por IPC.
+- [x] Cambios multiarchivo atómicos con hash de contenido base.
+- [x] 8 suites unitarias y 57 tests verdes.
+- [x] 3 smoke E2E verdes.
+- [x] Build TypeScript y empaquetado Linux verificados.
+- [ ] Caso completo de negocio automatizado contra Electron real.
+- [ ] Integración de Monaco y panel de historial visual completo.
 
 ## Plan de implementación actualizado (2026-09-12)
 

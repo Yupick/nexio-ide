@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import type { ApprovalDecision, WorkflowEvent, WorkflowRunOptions } from '../shared/types';
 
 export type ElectronApi = {
   getConfig: () => Promise<{ workspaceRoot: string; environment: string; agents: string[]; llmProviders: string[]; agentRuntime?: Record<string, unknown> }>; 
@@ -12,7 +13,11 @@ export type ElectronApi = {
   selectFile: () => Promise<string | null>;
   selectWorkspace: () => Promise<string | null>;
   setWorkspaceRoot: (rootPath: string) => Promise<string | null>;
-  runAgentWorkflow: (taskTitle: string, targetFile?: string | null, agentConfig?: Record<string, unknown>) => Promise<{ ok: boolean; message: string; data?: Record<string, unknown> }>;
+  runAgentWorkflow: (taskTitle: string, targetFile?: string | null, agentConfig?: WorkflowRunOptions) => Promise<{ ok: boolean; message: string; data?: Record<string, unknown> }>;
+  cancelWorkflow: (taskId: string) => Promise<{ ok: boolean; message: string }>;
+  decideApproval: (decision: ApprovalDecision) => Promise<{ ok: boolean; message: string; data?: Record<string, unknown> }>;
+  getApprovalHistory: () => Promise<Array<Record<string, unknown>>>;
+  onWorkflowEvent: (listener: (event: WorkflowEvent) => void) => () => void;
 };
 
 const electronApi: ElectronApi = {
@@ -27,7 +32,15 @@ const electronApi: ElectronApi = {
   selectFile: () => ipcRenderer.invoke('app:select-file'),
   selectWorkspace: () => ipcRenderer.invoke('app:select-workspace'),
   setWorkspaceRoot: (rootPath: string) => ipcRenderer.invoke('workspace:set-root', rootPath),
-  runAgentWorkflow: (taskTitle: string, targetFile?: string | null, agentConfig?: Record<string, unknown>) => ipcRenderer.invoke('agent:run-workflow', taskTitle, targetFile ?? null, agentConfig ?? null)
+  runAgentWorkflow: (taskTitle: string, targetFile?: string | null, agentConfig?: WorkflowRunOptions) => ipcRenderer.invoke('agent:run-workflow', taskTitle, targetFile ?? null, agentConfig ?? null),
+  cancelWorkflow: (taskId: string) => ipcRenderer.invoke('agent:cancel-workflow', taskId),
+  decideApproval: (decision: ApprovalDecision) => ipcRenderer.invoke('approval:decide', decision),
+  getApprovalHistory: () => ipcRenderer.invoke('approval:history'),
+  onWorkflowEvent: (listener: (event: WorkflowEvent) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, payload: WorkflowEvent) => listener(payload);
+    ipcRenderer.on('workflow:event', handler);
+    return () => ipcRenderer.removeListener('workflow:event', handler);
+  }
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronApi);

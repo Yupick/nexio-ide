@@ -3,7 +3,6 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-
 import { Sandbox } from './sandbox';
 
 export interface WorkspaceNode {
@@ -18,7 +17,6 @@ function shouldSkipDir(name: string): boolean {
 }
 
 export function listWorkspace(rootPath: string): WorkspaceNode[] {
-  const sandbox = new Sandbox({ allowedRoots: [rootPath] });
   const resolvedRoot = path.resolve(rootPath);
 
   const walk = (currentDir: string): WorkspaceNode[] => {

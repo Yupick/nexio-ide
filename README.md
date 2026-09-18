@@ -72,12 +72,14 @@ Before the final product version, the project will move through a QA and validat
 
 The testing strategy is documented in [testing_plan.md](testing_plan.md), and the operational QA gate is tracked in [qa_checklist.md](qa_checklist.md).
 
-## Release candidate status
+## Release 1.1.0 status
 
-This branch represents the release-candidate state of Nexio IDE for production readiness review. It includes the validated agent workflow, the approval/rejection UX, the hardening of the sandbox, and the testing evidence required for internal QA.
+This release hardens the approval workflow for production review. It includes runtime plugin permissions, restricted auto-approval, observable workflow events, cancellation, atomic multi-file changes with base-content conflict checks, and the validated approval UX.
+
+The current editor surface remains a lightweight desktop editor based on a textarea. Monaco integration, a full history view, and the complete business-flow E2E harness remain follow-up work and are not claimed as part of this release.
 
 
 
-## Release Candidate validation
+## Release 1.1.0 validation
 
-Validated against the live Ollama endpoint at http://chat.nightslayer.com.ar:11434 on 2026-09-12. The workflow executed with the principal agent, preserved task and snapshot metadata, and completed an approval-ready patch cycle within the project workspace.
+Validated on 2026-09-18 with the configured Ollama endpoint and deterministic local fallback tests. The suite passed 8 unit suites and 57 tests, the smoke E2E suite passed 3 tests, the TypeScript build passed, and the Linux packaging script completed. The workflow preserves task and snapshot metadata and supports an approval-ready atomic patch cycle inside the workspace.
