@@ -6,12 +6,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import type { AgentTask } from '../shared/types';
+import { createContentHash } from './content-hash';
+import type { AgentTask, StructuredChange } from '../shared/types';
 
 export interface ApprovedExecution {
   approved: boolean;
   patch: string;
   targetPath?: string;
+  change?: StructuredChange;
+  changes?: StructuredChange[];
   metadata?: Record<string, unknown>;
 }
 
@@ -28,6 +31,7 @@ export interface WorkflowHistoryEntry {
   approvedAt: string;
   message: string;
   targetPath?: string;
+  targetPaths?: string[];
   agent?: string;
   provider?: string;
   model?: string;
@@ -95,10 +99,51 @@ export class ExecutionManager {
     const root = path.resolve(workspaceRoot);
     const candidate = targetPath ? path.resolve(root, targetPath) : root;
     const relative = path.relative(root, candidate);
-    if (relative.startsWith('..') || path.isAbsolute(relative)) {
+    if (!targetPath || relative === '' || relative.startsWith('..') || path.isAbsolute(relative)) {
       throw new Error(`Patch target ${targetPath ?? 'workspace root'} is outside the sandbox root ${root}.`);
     }
     return candidate;
+  }
+
+  private resolveStructuredChange(change: StructuredChange, workspaceRoot: string): StructuredChange {
+    const targetPath = String(change.targetPath ?? '').trim();
+    const patch = String(change.patch ?? '').trim();
+    const resolvedTargetPath = this.resolveTargetPath(targetPath, workspaceRoot);
+    if (fs.existsSync(resolvedTargetPath) && !fs.statSync(resolvedTargetPath).isFile()) {
+      throw new Error(`Patch target ${targetPath} is not a workspace file.`);
+    }
+
+    if (!patch || !/^--- ([^\r\n]+)\r?\n\+\+\+ ([^\r\n]+)\r?\n/m.test(patch) || !/^@@[^\r\n]*(?:\r?\n|$)/m.test(patch)) {
+      throw new Error('Approval requires a structured unified diff with a target file and hunk.');
+    }
+
+    const headers = patch.match(/^--- ([^\r\n]+)\r?\n\+\+\+ ([^\r\n]+)/m);
+    if (!headers || headers[1].trim() !== targetPath || headers[2].trim() !== targetPath) {
+      throw new Error('Approval target does not match the structured diff headers.');
+    }
+
+    if (!/^(?:\+(?!\+\+\+)|-(?!---))[^\r\n]*$/m.test(patch)) {
+      throw new Error('Approval requires at least one changed line in the structured diff.');
+    }
+
+    return {
+      ...change,
+      targetPath,
+      patch,
+      ...(change.baseContentHash ? { baseContentHash: change.baseContentHash.trim() } : {})
+    };
+  }
+
+  private resolveStructuredChanges(approval: ApprovedExecution, workspaceRoot: string): StructuredChange[] {
+    const changes = approval.changes?.length
+      ? approval.changes
+      : [approval.change ?? { targetPath: approval.targetPath ?? '', patch: approval.patch }];
+
+    if (!changes.length) {
+      throw new Error('Approval requires at least one structured change.');
+    }
+
+    return changes.map((change) => this.resolveStructuredChange(change, workspaceRoot));
   }
 
   public async applyApprovedPatch(task: AgentTask, approval: ApprovedExecution, workspaceRoot = process.cwd()): Promise<ExecutionResult> {
@@ -106,54 +151,101 @@ export class ExecutionManager {
       return this.executeApprovedTask(task, approval);
     }
 
-    const targetPath = this.resolveTargetPath(approval.targetPath, workspaceRoot);
-    const fileContent = fs.existsSync(targetPath) ? fs.readFileSync(targetPath, 'utf8') : '';
-    const patchText = approval.patch.trim();
-    const nextContent = patchText.startsWith('---') && patchText.includes('+++')
-      ? (() => {
-          const lines = patchText.split('\n');
-          const next: string[] = [];
-          let inHunk = false;
-          let sourceLines = fileContent.split('\n');
+    const changes = this.resolveStructuredChanges(approval, workspaceRoot);
+    const nextFiles = changes.map((change) => {
+      const targetPath = this.resolveTargetPath(change.targetPath, workspaceRoot);
+      const fileContent = fs.existsSync(targetPath) ? fs.readFileSync(targetPath, 'utf8') : '';
+      if (change.baseContentHash && createContentHash(fileContent) !== change.baseContentHash) {
+        throw new Error(`Workspace file ${change.targetPath} changed since the patch was generated.`);
+      }
+
+      const patchText = change.patch;
+      const nextContent = patchText.startsWith('---') && patchText.includes('+++')
+        ? (() => {
+          const lines = patchText.split(/\r?\n/);
+          const sourceLines = fileContent.split('\n');
+          const output: string[] = [];
+          let sourceIndex = 0;
+          let hunkStarted = false;
 
           for (const line of lines) {
-            if (line.startsWith('--- ') || line.startsWith('+++ ') || line.startsWith('@@')) {
-              if (line.startsWith('@@')) {
-                inHunk = true;
+            if (line.startsWith('--- ') || line.startsWith('+++ ')) {
+              continue;
+            }
+
+            if (line.startsWith('@@')) {
+              const range = line.match(/^@@ -(\d+)(?:,\d+)? \+\d+(?:,\d+)? @@/);
+              if (range) {
+                const hunkStart = Number(range[1]) - 1;
+                if (hunkStart < sourceIndex || hunkStart > sourceLines.length) {
+                  throw new Error(`Patch hunk starts outside the workspace file ${change.targetPath}.`);
+                }
+                output.push(...sourceLines.slice(sourceIndex, hunkStart));
+                sourceIndex = hunkStart;
               }
+              hunkStarted = true;
               continue;
             }
 
-            if (!inHunk) {
+            if (!hunkStarted || line.startsWith('\\')) {
               continue;
             }
 
-            if (line.startsWith('+')) {
-              next.push(line.slice(1));
-              continue;
-            }
-
-            if (line.startsWith('-')) {
-              if (sourceLines.length > 0) {
-                sourceLines.shift();
+            const marker = line[0];
+            const content = line.slice(1);
+            if (marker === ' ') {
+              if (sourceLines[sourceIndex] !== content) {
+                throw new Error(`Patch context does not match ${change.targetPath}.`);
               }
-              continue;
-            }
-
-            if (line.length === 0 && sourceLines.length > 0) {
-              next.push('');
+              output.push(content);
+              sourceIndex += 1;
+            } else if (marker === '-') {
+              if (sourceLines[sourceIndex] !== content) {
+                throw new Error(`Patch removal does not match ${change.targetPath}.`);
+              }
+              sourceIndex += 1;
+            } else if (marker === '+') {
+              output.push(content);
+            } else {
+              throw new Error(`Patch contains an invalid unified diff line for ${change.targetPath}.`);
             }
           }
 
-          const merged = [...sourceLines];
-          return [...merged, ...next].join('\n');
-        })()
-      : patchText;
+          output.push(...sourceLines.slice(sourceIndex));
+            return output.join('\n');
+          })()
+        : patchText;
 
-    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
-    fs.writeFileSync(targetPath, nextContent, 'utf8');
+      return { change, targetPath, nextContent };
+    });
 
-    return this.executeApprovedTask(task, approval);
+    nextFiles.forEach(({ targetPath, nextContent }) => {
+      fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+      fs.writeFileSync(targetPath, nextContent, 'utf8');
+    });
+
+    return this.executeApprovedTask(task, {
+      ...approval,
+      change: changes[0],
+      changes,
+      patch: changes.map((change) => change.patch).join('\n\n'),
+      targetPath: changes[0].targetPath
+    });
+  }
+
+  public async decideApproval(task: AgentTask, approval: ApprovedExecution, workspaceRoot = process.cwd()): Promise<ExecutionResult> {
+    const changes = this.resolveStructuredChanges(approval, workspaceRoot);
+    const normalizedApproval: ApprovedExecution = {
+      ...approval,
+      patch: changes.map((change) => change.patch).join('\n\n'),
+      targetPath: changes[0].targetPath,
+      change: changes[0],
+      changes
+    };
+
+    return normalizedApproval.approved
+      ? this.applyApprovedPatch(task, normalizedApproval, workspaceRoot)
+      : this.executeApprovedTask(task, normalizedApproval);
   }
 
   public async executeApprovedTask(task: AgentTask, approval: ApprovedExecution): Promise<ExecutionResult> {
@@ -168,6 +260,7 @@ export class ExecutionManager {
         ? `Task ${task.id} executed and approved.`
         : `Task ${task.id} was rejected by the user.`,
       targetPath: approval.targetPath,
+      ...(approval.changes?.length ? { targetPaths: approval.changes.map((change) => change.targetPath) } : {}),
       ...(typeof metadata.agent === 'string' ? { agent: metadata.agent } : {}),
       ...(typeof metadata.provider === 'string' ? { provider: metadata.provider } : {}),
       ...(typeof metadata.model === 'string' ? { model: metadata.model } : {}),

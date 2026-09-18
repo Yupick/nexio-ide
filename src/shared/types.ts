@@ -19,6 +19,45 @@ export interface AgentTask {
   metadata?: Record<string, unknown>;
 }
 
+export interface StructuredChange {
+  targetPath: string;
+  patch: string;
+  pluginId?: string;
+  baseContentHash?: string;
+}
+
+export interface WorkflowRunOptions {
+  provider?: 'ollama' | 'openai' | 'gemini' | 'grok' | 'local';
+  agent?: 'ideas' | 'planning' | 'principal' | 'orchestrator';
+  model?: string;
+  baseUrl?: string;
+  apiKey?: string;
+  temperature?: number;
+  ideaSessionId?: string;
+  ideaModel?: string;
+  autoApproveChanges?: boolean;
+  runId?: string;
+}
+
+export interface ApprovalDecision {
+  taskId: string;
+  approved: boolean;
+  change?: StructuredChange;
+  changes?: StructuredChange[];
+  metadata?: Record<string, unknown>;
+}
+
+export type WorkflowEventType = 'workflow-started' | 'stage-started' | 'stage-completed' | 'workflow-completed' | 'workflow-failed' | 'workflow-cancelled';
+
+export interface WorkflowEvent {
+  type: WorkflowEventType;
+  taskId: string;
+  stage?: 'ideas' | 'planning' | 'orchestrator' | 'principal';
+  message: string;
+  timestamp: string;
+  metadata?: Record<string, unknown>;
+}
+
 export interface RoadmapEntry {
   id: string;
   title: string;
@@ -68,9 +107,22 @@ export interface PluginDefinition {
   capabilities?: string[];
 }
 
+export interface PluginRuntimeProfile {
+  enabled?: boolean;
+  autoApprove?: boolean;
+  capabilities?: string[];
+  provider?: WorkflowRunOptions['provider'];
+  model?: string;
+  baseUrl?: string;
+  apiKey?: string;
+  temperature?: number;
+  description?: string;
+}
+
 export interface PluginContext {
   projectPath: string;
   logger: (message: string) => void;
+  config?: PluginRuntimeProfile;
 }
 
 export interface PluginInstance {

@@ -3,7 +3,8 @@
  * It coordinates tasks and delegates execution to available plugins.
  */
 import { DiffEngine } from '../backend/diff-engine';
-import type { AgentContext, AgentExecutionResult, AgentMessage, AgentTask, PluginInstance } from '../shared/types';
+import { createContentHash } from '../backend/content-hash';
+import type { AgentContext, AgentExecutionResult, AgentMessage, AgentTask, PluginInstance, StructuredChange } from '../shared/types';
 
 export class PrincipalAgent {
   private readonly plugins: PluginInstance[];
@@ -129,6 +130,21 @@ export class PrincipalAgent {
         };
       });
 
+    const changes: StructuredChange[] = pluginResults.flatMap((result) => {
+      const data = result.data && typeof result.data === 'object' ? result.data as Record<string, unknown> : null;
+      const targetPath = typeof data?.targetPath === 'string' ? data.targetPath.trim() : '';
+      const patch = typeof data?.patch === 'string' ? data.patch.trim() : '';
+      const before = typeof data?.before === 'string' ? data.before : null;
+      return targetPath && patch
+        ? [{
+            targetPath,
+            patch,
+        pluginId: typeof data?.plugin === 'string' ? data.plugin : undefined,
+        ...(before !== null ? { baseContentHash: createContentHash(before) } : {})
+          }]
+        : [];
+    });
+
     return {
       ok: successful.length > 0 || pluginResults.length === 1 && pluginResults[0].ok,
       message: `Principal agent processed ${task.title} with ${selectedPlugins.length} plugin(s) and staged the reviewable execution result.`,
@@ -140,6 +156,7 @@ export class PrincipalAgent {
         messages: messageLog,
         results: pluginResults,
         patchSummary,
+        changes,
         contextRoot: context.snapshot.rootPath,
         reviewRequired: true
       }

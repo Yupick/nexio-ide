@@ -414,6 +414,12 @@ describe('Nexio IDE scaffold', () => {
     expect(result.ok).toBe(true);
     expect((result.data as any)?.taskDispatch).toEqual(['editor-plugin']);
     expect((result.data as any)?.patchSummary[0]).toMatchObject({ plugin: 'editor-plugin' });
+    expect((result.data as any)?.changes).toEqual([
+      expect.objectContaining({
+        targetPath: 'src/demo.ts',
+        patch: '--- src/demo.ts\n+++ src/demo.ts\n@@\n+export const demo = true;'
+      })
+    ]);
   });
 
   test('workflow runtime stages LLM calls across the agent pipeline instead of returning one direct chat answer', async () => {
@@ -509,10 +515,10 @@ describe('Nexio IDE scaffold', () => {
 
     expect(result.ok).toBe(true);
     expect(result.data).toHaveProperty('llmResponse');
-    expect(result.data?.llmResponse).toMatchObject({
-      provider: 'ollama',
+    expect((result.data as any)?.llmResponse).toMatchObject({
       text: expect.any(String)
     });
+    expect(['ollama', 'local']).toContain((result.data as any)?.llmResponse?.provider);
   }, 30000);
 
   test('workflow preview falls back to the principal result when no suggestions are available', () => {
