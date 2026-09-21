@@ -1,0 +1,14 @@
+{
+  "id": "syntax-plugin",
+  "name": "Syntax Plugin",
+  "version": "0.1.0",
+  "type": "syntax",
+  "description": "Parses and validates source syntax.",
+  "capabilities": ["syntax", "parse", "lint", "compile"],
+  "taskTypes": ["validation", "syntax"],
+  "readPaths": ["src"],
+  "resourceKeys": ["workspace-validation"],
+  "contractVersion": "1",
+  "timeoutMs": 30000,
+  "permissions": { "readOnly": true, "allowedRoots": ["workspace"] }
+}

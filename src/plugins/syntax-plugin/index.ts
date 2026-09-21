@@ -16,7 +16,7 @@ export default function createPlugin(context: PluginContext): PluginInstance {
         message: `Syntax plugin parsed ${task.title}.`,
         data: {
           taskId: task.id,
-          plugin: 'syntax',
+          plugin: 'syntax-plugin',
           contextRoot: context?.snapshot?.rootPath ?? 'unknown'
         }
       };

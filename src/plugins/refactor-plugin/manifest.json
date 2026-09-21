@@ -1,0 +1,15 @@
+{
+  "id": "refactor-plugin",
+  "name": "Refactor Plugin",
+  "version": "0.1.0",
+  "type": "agent",
+  "description": "Plans and applies bounded code refactors.",
+  "capabilities": ["refactor", "cleanup", "code", "architecture"],
+  "taskTypes": ["refactor", "implementation"],
+  "readPaths": ["src"],
+  "writePaths": ["src"],
+  "resourceKeys": ["workspace-source"],
+  "contractVersion": "1",
+  "timeoutMs": 60000,
+  "permissions": { "readOnly": false, "allowedRoots": ["workspace"] }
+}

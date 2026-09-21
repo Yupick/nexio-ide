@@ -51,6 +51,9 @@ Preparar la aplicación para una fase de pruebas internas y validación de calid
 - Ejecutar el flujo principal.
 - Aceptar un diff y confirmar resultado.
 - Rechazar un diff y asegurar que no se modifica nada.
+- Ejecutar el flujo real en Electron con preload y workspace temporal.
+- Recuperar `WorkflowRun` y actividad persistida después de la ejecución.
+- Validar pausa, reanudación, retry, timeout y bloqueo de plugin.
 
 ### 5. Pruebas de seguridad
 - Escritura fuera del workspace.
@@ -79,6 +82,12 @@ Preparar la aplicación para una fase de pruebas internas y validación de calid
 3. Ejecutar pruebas E2E del flujo principal.
 4. Cerrar bugs críticos.
 5. Repetir validación antes del release candidate.
+
+### Comandos reproducibles
+- `npm test -- --runInBand --silent`
+- `npm run build`
+- `npm run test:e2e -- tests/e2e/smoke.spec.ts tests/e2e/electron-workflow.spec.ts`
+- `git diff --check`
 
 ## Entregables esperados
 - Suite de unit tests en verde.

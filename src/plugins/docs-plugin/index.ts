@@ -16,7 +16,7 @@ export default function createPlugin(context: PluginContext): PluginInstance {
         message: `Docs plugin updated documentation for ${task.title}.`,
         data: {
           taskId: task.id,
-          plugin: 'docs',
+          plugin: 'docs-plugin',
           contextRoot: context?.snapshot?.rootPath ?? 'unknown'
         }
       };

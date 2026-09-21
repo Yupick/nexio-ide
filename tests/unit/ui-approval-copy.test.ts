@@ -18,7 +18,7 @@ describe('UI approval copy', () => {
     expect(html).toContain('window.electronAPI.decideApproval');
     expect(html).toContain('window.electronAPI.getApprovalHistory');
     expect(html).toContain('state.pendingChange');
-    expect(html).toContain('ideaSessionId');
+    expect(html).toContain('currentPlanId');
     expect(html).not.toContain('pushWorkflowHistoryEntry');
     expect(html).not.toContain("window.localStorage.setItem('nexio-workflow-history'");
     const decisionBlock = html.slice(html.indexOf('async function decidePendingChange'), html.indexOf('function getStoredPluginConfig'));

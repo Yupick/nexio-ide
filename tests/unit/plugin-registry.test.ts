@@ -18,6 +18,18 @@ describe('plugin registry', () => {
     expect(registry.get('refactor-plugin')?.name).toBe('Refactor Plugin');
   });
 
+  test('discovers manifest capabilities and execution policy', () => {
+    const pluginManager = new PluginManager(process.cwd() + '/src/plugins');
+    const definition = pluginManager.getDefinitions().find((plugin) => plugin.id === 'testing-plugin');
+
+    expect(definition).toMatchObject({
+      capabilities: expect.arrayContaining(['testing', 'qa']),
+      taskTypes: expect.arrayContaining(['testing', 'validation']),
+      contractVersion: '1',
+      permissions: { readOnly: true }
+    });
+  });
+
   test('loads and executes real plugin modules from the plugins directory', async () => {
     const pluginManager = new PluginManager(process.cwd() + '/src/plugins');
     const instances = await pluginManager.loadAll({
@@ -72,5 +84,12 @@ describe('plugin registry', () => {
     });
 
     expect(instances.length).toBeGreaterThan(0);
+  });
+
+  test('applies the manifest timeout to loaded plugin instances', async () => {
+    const pluginManager = new PluginManager(process.cwd() + '/src/plugins');
+    const instances = await pluginManager.loadAll({ projectPath: process.cwd(), logger: () => undefined });
+
+    expect(instances.find((plugin) => plugin.id === 'testing-plugin')?.timeoutMs).toBe(60000);
   });
 });

@@ -1,0 +1,15 @@
+{
+  "id": "docs-plugin",
+  "name": "Docs Plugin",
+  "version": "0.1.0",
+  "type": "agent",
+  "description": "Generates and validates project documentation.",
+  "capabilities": ["docs", "documentation", "readme", "guide"],
+  "taskTypes": ["documentation"],
+  "readPaths": ["README.md", "docs"],
+  "writePaths": ["README.md", "docs"],
+  "resourceKeys": ["workspace-documentation"],
+  "contractVersion": "1",
+  "timeoutMs": 30000,
+  "permissions": { "readOnly": false, "allowedRoots": ["workspace"] }
+}

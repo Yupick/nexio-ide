@@ -1,303 +1,216 @@
 import { WorkflowRuntime } from '../../src/backend/workflow-runtime';
-import type { AgentTask, ProjectSnapshot } from '../../src/shared/types';
+import { PrincipalAgent } from '../../src/agents/principal-agent';
+import { createProjectSnapshotHash } from '../../src/backend/snapshot-hash';
+import { WorkflowEventStore } from '../../src/backend/workflow-event-store';
+import type { PlanRun, ProjectSnapshot, RoadmapEntry, WorkflowEvent } from '../../src/shared/types';
 
-beforeAll(() => {
-  jest.spyOn(global, 'fetch').mockRejectedValue(new Error('offline test provider'));
-});
+function createSnapshot(): ProjectSnapshot {
+  return {
+    name: 'nexio-ide',
+    rootPath: process.cwd(),
+    files: ['src/ui/index.html'],
+    lastUpdated: '2026-09-10T00:00:00Z'
+  };
+}
 
-afterAll(() => {
-  jest.restoreAllMocks();
-});
+function createPlan(snapshot: ProjectSnapshot, status: PlanRun['status'] = 'handed_off', tasks?: RoadmapEntry[]): PlanRun {
+  const snapshotHash = createProjectSnapshotHash(snapshot);
+  return {
+    planId: 'plan-runtime-001',
+    sessionId: 'session-runtime-001',
+    revision: 1,
+    status,
+    proposal: {
+      id: 'proposal-runtime-001',
+      sessionId: 'session-runtime-001',
+      summary: 'Preparar validación',
+      objective: 'Preparar validación',
+      scope: ['workspace'],
+      constraints: [],
+      acceptanceCriteria: ['La validación termina correctamente.'],
+      openQuestions: [],
+      transcript: { sessionId: 'session-runtime-001', messages: [{ role: 'user', text: 'Preparar validación' }] },
+      snapshotHash,
+      createdAt: new Date().toISOString()
+    },
+    snapshotHash,
+    roadmap: {
+      version: '1.0.0',
+      summary: 'Plan de validación',
+      tasks: tasks ?? [{
+        id: 'runtime-task-1',
+        title: 'Validar ejecución',
+        description: 'Ejecutar la validación del plan.',
+        priority: 'high',
+        dependencies: [],
+        acceptanceCriteria: ['La validación termina correctamente.'],
+        suggestedAgent: 'testing-plugin'
+      }]
+    },
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+}
 
 describe('workflow runtime', () => {
-  test('creates an end-to-end operational workflow state', async () => {
+  test('keeps approval state transitions independent from plan execution', () => {
     const runtime = new WorkflowRuntime();
-    const snapshot: ProjectSnapshot = {
-      name: 'nexio-ide',
-      rootPath: process.cwd(),
-      files: ['src/ui/index.html', 'src/backend/orchestrator.ts'],
-      lastUpdated: '2026-09-10T00:00:00Z'
-    };
-
-    const task: AgentTask = {
-      id: 'wf-001',
-      title: 'Prepare release candidate',
-      description: 'Finalize the product for internal QA and testing.',
-      priority: 'high',
-      dependencies: []
-    };
-
-    const result = await runtime.runWorkflow(snapshot, task);
-
-    expect(result.ok).toBe(true);
-    expect(result.data).toHaveProperty('ideaResult');
-    expect(result.data).toHaveProperty('planResult');
-    expect(result.data).toHaveProperty('approvalStatus', 'awaiting_review');
-    expect((result.data as any)?.executionMetadata).toMatchObject({
-      taskId: 'wf-001',
-      agent: 'principal',
-      provider: 'ollama'
-    });
-  });
-
-  test('emits ordered workflow events for each agent stage', async () => {
-    const runtime = new WorkflowRuntime({
-      provider: 'local',
-      agent: 'principal',
-      model: 'local-model',
-      baseUrl: 'http://localhost',
-      apiKey: '',
-      temperature: 0.2
-    });
-    const events: string[] = [];
-
-    await runtime.runWorkflow({
-      name: 'nexio-ide',
-      rootPath: process.cwd(),
-      files: ['src/ui/index.html'],
-      lastUpdated: '2026-09-10T00:00:00Z'
-    }, {
-      id: 'wf-events-001',
-      title: 'Emit workflow events',
-      description: 'Verify observable workflow stages.',
-      priority: 'medium',
-      dependencies: []
-    }, (event) => events.push(`${event.type}:${event.stage ?? 'workflow'}`));
-
-    expect(events[0]).toBe('workflow-started:workflow');
-    expect(events).toEqual(expect.arrayContaining([
-      'stage-started:ideas',
-      'stage-completed:ideas',
-      'stage-started:planning',
-      'stage-completed:planning',
-      'stage-started:orchestrator',
-      'stage-completed:orchestrator',
-      'stage-started:principal',
-      'stage-completed:principal',
-      'workflow-completed:workflow'
-    ]));
-  });
-
-  test('cancels before starting a workflow when requested', async () => {
-    const runtime = new WorkflowRuntime({
-      provider: 'local',
-      agent: 'principal',
-      model: 'local-model',
-      baseUrl: 'http://localhost',
-      apiKey: '',
-      temperature: 0.2
-    });
-    const events: string[] = [];
-
-    await expect(runtime.runWorkflow({
-      name: 'nexio-ide',
-      rootPath: process.cwd(),
-      files: [],
-      lastUpdated: '2026-09-10T00:00:00Z'
-    }, {
-      id: 'wf-cancelled-001',
-      title: 'Cancel workflow',
-      description: 'Verify cancellation before provider work.',
-      priority: 'low',
-      dependencies: []
-    }, (event) => events.push(event.type), () => true)).rejects.toThrow('WORKFLOW_CANCELLED');
-
-    expect(events).toEqual(['workflow-started', 'workflow-cancelled']);
-  });
-
-  test('preserves the active idea session and model in execution metadata', async () => {
-    const runtime = new WorkflowRuntime({
-      provider: 'local',
-      agent: 'principal',
-      model: 'session-model',
-      baseUrl: 'http://localhost',
-      apiKey: '',
-      temperature: 0.2
-    });
-
-    const result = await runtime.runWorkflow({
-      name: 'nexio-ide',
-      rootPath: process.cwd(),
-      files: ['src/ui/index.html'],
-      lastUpdated: '2026-09-10T00:00:00Z'
-    }, {
-      id: 'wf-session-001',
-      title: 'Preserve idea session',
-      description: 'Keep correlation metadata for the active idea session.',
-      priority: 'medium',
-      dependencies: [],
-      metadata: {
-        ideaSessionId: 'session-42',
-        ideaModel: 'session-model'
-      }
-    });
-
-    expect(result.data?.executionMetadata).toMatchObject({
-      ideaSessionId: 'session-42',
-      ideaModel: 'session-model'
-    });
-  });
-
-  test('supports approval and rejection transitions', async () => {
-    const runtime = new WorkflowRuntime();
-
     const state = runtime.createState('task-approve', 'Test approval flow');
+
     runtime.setApprovalState(state, 'approved');
     expect(state.approvalStatus).toBe('approved');
-
     runtime.setApprovalState(state, 'rejected');
     expect(state.approvalStatus).toBe('rejected');
   });
 
-  test('produces an approval-ready patch summary from the principal execution', async () => {
-    const runtime = new WorkflowRuntime();
-    const snapshot: ProjectSnapshot = {
-      name: 'nexio-ide',
-      rootPath: process.cwd(),
-      files: ['src/backend/workflow-runtime.ts'],
-      lastUpdated: '2026-09-10T00:00:00Z'
-    };
-
-    const result = await runtime.runWorkflow(snapshot, {
-      id: 'wf-patch-001',
-      title: 'Prepare approval-ready patch',
-      description: 'Create a staged patch preview for review and approval.',
-      priority: 'high',
-      dependencies: []
-    });
-
-    expect(result.ok).toBe(true);
-    expect(result.data).toHaveProperty('approvalStatus', 'awaiting_review');
-    expect((result.data as any)?.principalResult?.data?.patchSummary).toEqual(expect.any(Array));
-    expect(String((result.data as any)?.principalResult?.data?.patchSummary?.[0]?.message ?? '')).toContain('processed');
-  });
-
-  test('uses the configured runtime provider and exposes the available plugins', async () => {
+  test('executes a handed-off plan without regenerating Ideas or Planning', async () => {
+    const ideasSpy = jest.spyOn((require('../../src/agents/ideas-agent') as typeof import('../../src/agents/ideas-agent')).IdeasAgent.prototype, 'think');
+    const planningSpy = jest.spyOn((require('../../src/agents/planning-agent') as typeof import('../../src/agents/planning-agent')).PlanningAgent.prototype, 'plan');
     const runtime = new WorkflowRuntime({
-      provider: 'gemini',
+      provider: 'local',
       agent: 'principal',
-      model: 'gemini-2.0-flash',
-      baseUrl: 'https://generativelanguage.googleapis.com',
+      model: 'local-model',
+      baseUrl: 'http://localhost',
       apiKey: '',
-      temperature: 0.3
+      temperature: 0.2
     });
-
-    const snapshot: ProjectSnapshot = {
-      name: 'nexio-ide',
-      rootPath: process.cwd(),
-      files: ['src/ui/index.html', 'src/backend/workflow-runtime.ts'],
-      lastUpdated: '2026-09-10T00:00:00Z'
-    };
-
-    const result = await runtime.runWorkflow(snapshot, {
-      id: 'wf-002',
-      title: 'Verify configured provider',
-      description: 'Ensure backend runtime honors provider and plugin selection.',
-      priority: 'medium',
-      dependencies: []
-    });
+    const snapshot = createSnapshot();
+    const events: string[] = [];
+    const runId = `run-plan-runtime-${Date.now()}`;
+    const result = await runtime.runPlanWorkflow(snapshot, createPlan(snapshot), (event: WorkflowEvent) => events.push(`${event.taskId}:${event.type}`), undefined, runId);
 
     expect(result.ok).toBe(true);
-    expect(result.data).toHaveProperty('agentRuntime');
-    expect((result.data as any)?.agentRuntime.provider).toBe('gemini');
-    expect((result.data as any)?.availablePlugins).toEqual(expect.arrayContaining([
-      'syntax-plugin',
-      'refactor-plugin',
-      'docs-plugin',
-      'testing-plugin'
-    ]));
+    expect(result.data).toMatchObject({ planId: 'plan-runtime-001', runId });
+    expect((result.data as any)?.taskResults[0]).toMatchObject({ taskId: 'runtime-task-1', ok: true });
+    expect(events[0]).toBe(`${runId}:workflow-started`);
+    expect(ideasSpy).not.toHaveBeenCalled();
+    expect(planningSpy).not.toHaveBeenCalled();
+    expect(new WorkflowEventStore(snapshot.rootPath).list({ runId }).map((event) => event.type)).toEqual(expect.arrayContaining(['workflow-started', 'stage-started', 'stage-completed', 'workflow-completed']));
+    ideasSpy.mockRestore();
+    planningSpy.mockRestore();
   });
 
-  test('builds a config-aware prompt payload for the selected agent/provider/language', async () => {
+  test('persists a paused run when pause is requested before task dispatch', async () => {
     const runtime = new WorkflowRuntime({
-      provider: 'grok',
-      agent: 'orchestrator',
-      model: 'grok-2-latest',
-      baseUrl: 'https://api.x.ai/v1',
+      provider: 'local',
+      agent: 'principal',
+      model: 'local-model',
+      baseUrl: 'http://localhost',
       apiKey: '',
-      temperature: 0.5
+      temperature: 0.2
     });
+    const snapshot = createSnapshot();
+    const result = await runtime.runPlanWorkflow(snapshot, createPlan(snapshot), undefined, undefined, 'run-plan-paused-001', () => true);
 
-    const snapshot: ProjectSnapshot = {
-      name: 'nexio-ide',
-      rootPath: process.cwd(),
-      files: ['src/backend/workflow-runtime.ts', 'scripts/etl.py'],
-      lastUpdated: '2026-09-10T00:00:00Z'
-    };
-
-    const result = await runtime.runWorkflow(snapshot, {
-      id: 'wf-003',
-      title: 'Generate orchestrator prompt',
-      description: 'Validate runtime-config prompt generation for the selected mode.',
-      priority: 'high',
-      dependencies: []
-    });
-
-    expect(result.ok).toBe(true);
-    expect((result.data as any)?.promptContext).toMatchObject({
-      template: 'orchestrator',
-      provider: 'grok',
-      language: 'python'
-    });
-    expect(String((result.data as any)?.promptContext.renderedPrompt)).toContain('orchestrator');
+    expect(result.ok).toBe(false);
+    expect(result.data).toMatchObject({ runId: 'run-plan-paused-001', status: 'paused' });
   });
 
-  test('routes the workflow through ideas, planning, orchestrator and principal execution stages', async () => {
+  test('rejects a plan that is not ready for execution', async () => {
     const runtime = new WorkflowRuntime({
-      provider: 'ollama',
-      agent: 'orchestrator',
-      model: 'llama3.1',
-      baseUrl: 'http://chat.nightslayer.com.ar:11434',
+      provider: 'local',
+      agent: 'principal',
+      model: 'local-model',
+      baseUrl: 'http://localhost',
       apiKey: '',
-      temperature: 0.4
+      temperature: 0.2
     });
+    const snapshot = createSnapshot();
+    const result = await runtime.runPlanWorkflow(snapshot, createPlan(snapshot, 'generating'));
 
-    const snapshot: ProjectSnapshot = {
-      name: 'nexio-ide',
-      rootPath: process.cwd(),
-      files: ['src/backend/workflow-runtime.ts', 'src/agents/planning-agent.ts'],
-      lastUpdated: '2026-09-10T00:00:00Z'
-    };
-
-    const result = await runtime.runWorkflow(snapshot, {
-      id: 'wf-004',
-      title: 'Stage orchestration contract',
-      description: 'Ensure the authoring flow respects ideas → planning → orchestrator → principal execution.',
-      priority: 'high',
-      dependencies: []
-    });
-
-    expect(result.ok).toBe(true);
-    expect(result.data).toHaveProperty('ideaResult');
-    expect(result.data).toHaveProperty('planResult');
-    expect(result.data).toHaveProperty('orchestratorResult');
-    expect(result.data).toHaveProperty('principalResult');
-    expect((result.data as any)?.orchestratorResult?.ok).toBe(true);
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain('no está listo');
   });
 
-  test('records runtime audit events for the whole workflow lifecycle', async () => {
-    const runtime = new WorkflowRuntime();
-    const snapshot: ProjectSnapshot = {
-      name: 'nexio-ide',
-      rootPath: process.cwd(),
-      files: ['src/backend/workflow-runtime.ts', 'src/agents/planning-agent.ts'],
-      lastUpdated: '2026-09-10T00:00:00Z'
-    };
-
-    const result = await runtime.runWorkflow(snapshot, {
-      id: 'wf-audit-001',
-      title: 'Audit final workflow execution',
-      description: 'Ensure the runtime produces a verifiable event trail for QA and support.',
-      priority: 'high',
-      dependencies: []
+  test('executes independent ready tasks in parallel with deterministic result order', async () => {
+    let active = 0;
+    let maximumActive = 0;
+    const executeSpy = jest.spyOn(PrincipalAgent.prototype, 'execute').mockImplementation(async (_context, task) => {
+      active += 1;
+      maximumActive = Math.max(maximumActive, active);
+      await new Promise((resolve) => setTimeout(resolve, 15));
+      active -= 1;
+      return { ok: true, message: `done:${task.id}`, data: {} };
     });
 
-    expect(result.ok).toBe(true);
-    expect(result.data).toHaveProperty('auditTrail');
-    expect((result.data as any)?.auditTrail).toEqual(expect.arrayContaining([
-      expect.objectContaining({ stage: 'workflow-started' }),
-      expect.objectContaining({ stage: 'idea-generation' }),
-      expect.objectContaining({ stage: 'workflow-complete' })
-    ]));
+    try {
+      const snapshot = createSnapshot();
+      const result = await new WorkflowRuntime({ provider: 'local', agent: 'principal', model: 'local-model', baseUrl: 'http://localhost', apiKey: '', temperature: 0.2 }).runPlanWorkflow(
+        snapshot,
+        createPlan(snapshot, 'handed_off', [
+          { id: 'parallel-a', title: 'A', description: 'A', priority: 'medium', dependencies: [], writePaths: ['src/a.ts'] },
+          { id: 'parallel-b', title: 'B', description: 'B', priority: 'medium', dependencies: [], writePaths: ['src/b.ts'] }
+        ]),
+        undefined,
+        undefined,
+        `run-parallel-${Date.now()}`
+      );
+
+      expect(result.ok).toBe(true);
+      expect(maximumActive).toBe(2);
+      expect((result.data as any)?.taskResults.map((entry: { taskId: string }) => entry.taskId)).toEqual(['parallel-a', 'parallel-b']);
+    } finally {
+      executeSpy.mockRestore();
+    }
+  });
+
+  test('serializes conflicting and ambiguous ready tasks', async () => {
+    let active = 0;
+    let maximumActive = 0;
+    const executeSpy = jest.spyOn(PrincipalAgent.prototype, 'execute').mockImplementation(async () => {
+      active += 1;
+      maximumActive = Math.max(maximumActive, active);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      active -= 1;
+      return { ok: true, message: 'done', data: {} };
+    });
+
+    try {
+      const snapshot = createSnapshot();
+      const result = await new WorkflowRuntime({ provider: 'local', agent: 'principal', model: 'local-model', baseUrl: 'http://localhost', apiKey: '', temperature: 0.2 }).runPlanWorkflow(
+        snapshot,
+        createPlan(snapshot, 'handed_off', [
+          { id: 'serial-a', title: 'A', description: 'A', priority: 'medium', dependencies: [], writePaths: ['src/shared.ts'] },
+          { id: 'serial-b', title: 'B', description: 'B', priority: 'medium', dependencies: [], writePaths: ['src/shared.ts'] },
+          { id: 'serial-ambiguous', title: 'Ambiguous', description: 'Ambiguous', priority: 'medium', dependencies: [] }
+        ]),
+        undefined,
+        undefined,
+        `run-conflict-${Date.now()}`
+      );
+
+      expect(result.ok).toBe(true);
+      expect(maximumActive).toBe(1);
+    } finally {
+      executeSpy.mockRestore();
+    }
+  });
+
+  test('does not run a dependent task until its dependency succeeds', async () => {
+    const started: string[] = [];
+    const executeSpy = jest.spyOn(PrincipalAgent.prototype, 'execute').mockImplementation(async (_context, task) => {
+      started.push(task.id);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      return { ok: true, message: 'done', data: {} };
+    });
+
+    try {
+      const snapshot = createSnapshot();
+      const result = await new WorkflowRuntime({ provider: 'local', agent: 'principal', model: 'local-model', baseUrl: 'http://localhost', apiKey: '', temperature: 0.2 }).runPlanWorkflow(
+        snapshot,
+        createPlan(snapshot, 'handed_off', [
+          { id: 'dependency-a', title: 'A', description: 'A', priority: 'medium', dependencies: [], writePaths: ['src/a.ts'] },
+          { id: 'dependency-b', title: 'B', description: 'B', priority: 'medium', dependencies: ['dependency-a'], writePaths: ['src/b.ts'] }
+        ]),
+        undefined,
+        undefined,
+        `run-dependency-${Date.now()}`
+      );
+
+      expect(result.ok).toBe(true);
+      expect(started).toEqual(['dependency-a', 'dependency-b']);
+    } finally {
+      executeSpy.mockRestore();
+    }
   });
 });

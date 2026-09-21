@@ -1,0 +1,14 @@
+{
+  "id": "testing-plugin",
+  "name": "Testing Plugin",
+  "version": "0.1.0",
+  "type": "agent",
+  "description": "Runs project tests and validation checks.",
+  "capabilities": ["testing", "qa", "validation", "verify"],
+  "taskTypes": ["testing", "validation"],
+  "readPaths": ["src", "tests"],
+  "resourceKeys": ["workspace-validation"],
+  "contractVersion": "1",
+  "timeoutMs": 60000,
+  "permissions": { "readOnly": true, "allowedRoots": ["workspace"] }
+}

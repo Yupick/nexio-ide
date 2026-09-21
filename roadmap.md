@@ -207,6 +207,32 @@ Dejar el producto en un estado de pruebas internas y de validación de calidad, 
 ## Estado actual del roadmap
 El proyecto consolidó la base funcional y el hardening principal. La release 1.1.0 está lista para cierre GitFlow con evidencia reproducible de build, tests, smoke E2E, sandbox, plugins y aplicación atómica de cambios. Monaco, historial visual completo y E2E de negocio en Electron real permanecen como backlog posterior.
 
+### Trabajo iniciado 2026-09-19 - Ideas -> Planificación -> Orquestador
+- [x] Separar la conversación de Ideas de la ejecución del workflow mediante IPC dedicado.
+- [x] Definir `IdeaProposal`, `PlanRun`, `PlanGenerationRequest` y `OrchestrationInput`.
+- [x] Persistir planes versionados por workspace en `.nexio/plan-runs.json`.
+- [x] Generar y validar un roadmap desde el transcript de Ideas con fallback seguro.
+- [x] Validar el snapshot antes de entregar el roadmap al orquestador.
+- [x] Añadir acciones UI explícitas: `Generar plan` y `Enviar al orquestador`.
+- [x] Añadir ejecución por `planId` después del handoff, con runId compartido para eventos y cancelación.
+- [x] Añadir acción UI explícita `Ejecutar plan` y mostrar cambios para aprobación.
+- [x] Añadir estados y validador topológico para el supervisor de ejecuciones.
+- [x] Persistir `WorkflowRun` separado del historial de aprobaciones.
+- [x] Recuperar leases expirados y propagar bloqueos a tareas dependientes.
+- [x] Ejecutar el runtime de planes mediante estados persistidos y leases por tarea.
+- [x] Añadir pausa, reanudación y reintento de tareas mediante IPC/UI.
+- [x] Retirar la ruta IPC/UI que regeneraba Ideas y Planificación desde una solicitud libre.
+- [x] Eliminar los métodos internos legacy `runWorkflow()`/`runIdeaWorkflow()` tras migrar sus tests históricos.
+- [x] Delegar tareas por capacidades declaradas en los manifiestos de plugins.
+- [x] Añadir heartbeat y renovación de leases por IPC.
+- [x] Persistir actividad correlacionada en `.nexio/workflow-events.jsonl` y consultarla por IPC.
+- [x] Aplicar timeouts efectivos de plugin desde manifiesto/perfil.
+- [x] Bloquear cambios producidos por plugins read-only.
+- [x] Añadir prueba E2E Electron de recuperación de run y actividad persistida.
+- [x] Añadir UI operacional de tareas, leases y actividad.
+- [x] Añadir health check, timeout y permisos efectivos de plugins.
+- [ ] Añadir E2E específico de pausa/reanudación/retry bajo ejecución lenta.
+
 ### Cierre verificado 2026-09-18
 - [x] Plugins desactivados y capacidades configuradas se aplican en runtime.
 - [x] Autoaprobación backend restringida y auditable.
