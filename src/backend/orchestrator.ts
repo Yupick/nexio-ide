@@ -4,81 +4,193 @@
  * problem into phases, milestones and execution groups, and the orchestrator then
  * splits the work across the downstream agents.
  */
-import { IdeasAgent } from '../agents/ideas-agent';
-import { PlanningAgent } from '../agents/planning-agent';
-import type { AgentContext, AgentExecutionResult, AgentTask, ProjectSnapshot, Roadmap } from '../shared/types';
+import { validateRoadmap } from './roadmap-validator';
+import { createProjectSnapshotHash } from './snapshot-hash';
+import type { AgentExecutionResult, OrchestrationInput, ProjectSnapshot, Roadmap, WorkflowRun, WorkflowTaskState } from '../shared/types';
 
 export class AgentOrchestrator {
-  private readonly ideasAgent = new IdeasAgent();
-  private readonly planningAgent = new PlanningAgent();
+  public createWorkflowRun(snapshot: ProjectSnapshot, input: OrchestrationInput, planRevision: number, maxAttempts = 3, requestedRunId?: string): WorkflowRun {
+    const validation = validateRoadmap(input.roadmap);
+    if (!validation.ok) {
+      throw new Error(validation.message);
+    }
 
-  public async runIdeaWorkflow(snapshot: ProjectSnapshot, task: AgentTask): Promise<AgentExecutionResult> {
-    const context: AgentContext = {
-      snapshot,
-      roadmap: {
-        version: '1.0.0',
-        summary: 'Workflow initialized from project snapshot.',
-        tasks: []
-      } as Roadmap,
-      sandbox: {
-        allowedRoots: [snapshot.rootPath],
-        readOnly: true
-      }
-    };
-
-    const ideaResult = await this.ideasAgent.think(context, task);
-    const planResult = await this.planningAgent.plan(context, task);
-
-    const roadmap: Roadmap = (planResult.data?.roadmap ?? {
-      version: '1.0.0',
-      summary: 'No roadmap generated yet.',
-      tasks: []
-    }) as Roadmap;
-
-    const orchestratedTasks = (roadmap.tasks ?? []).map((entry, index) => ({
-      ...entry,
-      order: index + 1,
-      stage: entry.priority === 'high' ? 'execution' : 'validation'
+    const now = new Date().toISOString();
+    const tasks: WorkflowTaskState[] = input.roadmap.tasks.map((entry) => ({
+      taskId: entry.id,
+      planId: input.planId,
+      planRevision,
+      title: entry.title,
+      description: entry.description,
+      dependencies: [...entry.dependencies],
+      ...(entry.readPaths ? { readPaths: [...entry.readPaths] } : {}),
+      ...(entry.writePaths ? { writePaths: [...entry.writePaths] } : {}),
+      ...(entry.resourceKeys ? { resourceKeys: [...entry.resourceKeys] } : {}),
+      priority: entry.priority,
+      acceptanceCriteria: [...(entry.acceptanceCriteria ?? [])],
+      ...(entry.suggestedAgent ? { pluginId: entry.suggestedAgent } : {}),
+      requiredCapabilities: [...(entry.requiredCapabilities ?? [])],
+      status: entry.dependencies.length === 0 ? 'ready' : 'pending',
+      attempt: 0,
+      maxAttempts,
+      updatedAt: now
     }));
 
-    const executionThreads = (roadmap.tasks ?? []).map((entry, index) => {
-      const lowerTitle = `${entry.title} ${entry.description}`.toLowerCase();
-      const delegateTo = /docs|documentation|readme|guide/.test(lowerTitle)
-        ? 'docs-plugin'
-        : /test|qa|validation|smoke|regression/.test(lowerTitle)
-          ? 'testing-plugin'
-          : /refactor|cleanup|code|improve/.test(lowerTitle)
-            ? 'refactor-plugin'
-            : 'principal-agent';
+    return {
+      runId: requestedRunId || `run-${input.planId}-${Date.now()}`,
+      planId: input.planId,
+      planRevision,
+      snapshotHash: input.snapshotHash,
+      status: 'pending',
+      tasks,
+      createdAt: now,
+      updatedAt: now
+    };
+  }
 
+  public getRunnableTasks(run: WorkflowRun): WorkflowTaskState[] {
+    const completed = new Set(run.tasks.filter((task) => task.status === 'succeeded').map((task) => task.taskId));
+    return run.tasks.filter((task) => (
+      (task.status === 'pending' || task.status === 'ready' || task.status === 'retryable')
+      && task.dependencies.every((dependency) => completed.has(dependency))
+    ));
+  }
+
+  public markTaskRunning(run: WorkflowRun, taskId: string, leaseMs = 60_000): WorkflowRun {
+    const now = new Date();
+    const leaseId = `lease-${run.runId}-${taskId}-${Date.now()}`;
+    return this.updateTask(run, taskId, (task) => ({
+      ...task,
+      status: 'running',
+      attempt: task.attempt + 1,
+      leaseId,
+      leaseExpiresAt: new Date(now.getTime() + leaseMs).toISOString(),
+      heartbeatAt: now.toISOString(),
+      updatedAt: now.toISOString()
+    }), 'running');
+  }
+
+  public renewTaskLease(run: WorkflowRun, taskId: string, leaseMs = 60_000): WorkflowRun {
+    const now = new Date();
+    return this.updateTask(run, taskId, (task) => {
+      if (task.status !== 'running' || !task.leaseId) {
+        throw new Error(`La tarea ${taskId} no tiene un lease activo.`);
+      }
       return {
-        id: entry.id,
-        title: entry.title,
-        description: entry.description,
-        order: index + 1,
-        owner: 'orchestrator',
-        delegateTo,
-        status: 'pending',
-        dependencies: Array.isArray(entry.dependencies) ? entry.dependencies : [],
-        priority: entry.priority,
-        stage: entry.priority === 'high' ? 'execution' : 'validation',
-        createdAt: new Date().toISOString()
+        ...task,
+        leaseExpiresAt: new Date(now.getTime() + leaseMs).toISOString(),
+        heartbeatAt: now.toISOString(),
+        updatedAt: now.toISOString()
+      };
+    }, run.status);
+  }
+
+  public markTaskResult(run: WorkflowRun, taskId: string, ok: boolean, result: Record<string, unknown>): WorkflowRun {
+    const now = new Date().toISOString();
+    return this.updateTask(run, taskId, (task) => {
+      const blocked = result.blocked === true;
+      const retryable = !ok && !blocked && task.attempt < task.maxAttempts;
+      return {
+        ...task,
+        status: blocked ? 'blocked' : ok ? 'succeeded' : retryable ? 'retryable' : 'failed',
+        leaseId: undefined,
+        leaseExpiresAt: undefined,
+        heartbeatAt: undefined,
+        result,
+        updatedAt: now
+      };
+    }, run.status);
+  }
+
+  public retryTask(run: WorkflowRun, taskId: string): WorkflowRun {
+    const task = run.tasks.find((entry) => entry.taskId === taskId);
+    if (!task || !['failed', 'retryable', 'blocked'].includes(task.status)) {
+      throw new Error(`La tarea ${taskId} no está disponible para reintento.`);
+    }
+    if (task.attempt >= task.maxAttempts) {
+      throw new Error(`La tarea ${taskId} alcanzó el máximo de intentos.`);
+    }
+
+    const completed = new Set(run.tasks.filter((entry) => entry.status === 'succeeded').map((entry) => entry.taskId));
+    const status = task.dependencies.every((dependency) => completed.has(dependency)) ? 'ready' : 'pending';
+    return this.updateTask(run, taskId, (entry) => ({
+      ...entry,
+      status,
+      result: undefined,
+      leaseId: undefined,
+      leaseExpiresAt: undefined,
+      updatedAt: new Date().toISOString()
+    }), 'paused');
+  }
+
+  public blockTasksWithFailedDependencies(run: WorkflowRun): WorkflowRun {
+    const failed = new Set(run.tasks.filter((task) => task.status === 'blocked' || task.status === 'failed').map((task) => task.taskId));
+    if (failed.size === 0) {
+      return run;
+    }
+
+    const now = new Date().toISOString();
+    const tasks = run.tasks.map((task) => {
+      if (!['pending', 'ready', 'retryable'].includes(task.status) || !task.dependencies.some((dependency) => failed.has(dependency))) {
+        return task;
+      }
+      return {
+        ...task,
+        status: 'blocked' as const,
+        result: { blockedBy: task.dependencies.filter((dependency) => failed.has(dependency)) },
+        updatedAt: now
       };
     });
 
+    return { ...run, tasks, updatedAt: now };
+  }
+
+  private updateTask(run: WorkflowRun, taskId: string, update: (task: WorkflowTaskState) => WorkflowTaskState, status: WorkflowRun['status']): WorkflowRun {
+    const tasks = run.tasks.map((task) => task.taskId === taskId ? update(task) : task);
+    return { ...run, status, tasks, updatedAt: new Date().toISOString() };
+  }
+
+  public runPlan(snapshot: ProjectSnapshot, input: OrchestrationInput): AgentExecutionResult {
+    const currentSnapshotHash = createProjectSnapshotHash(snapshot);
+    if (currentSnapshotHash !== input.snapshotHash) {
+      return {
+        ok: false,
+        message: 'El snapshot del plan está obsoleto; genera el plan nuevamente antes de enviarlo al orquestador.',
+        data: {
+          planId: input.planId,
+          expectedSnapshotHash: input.snapshotHash,
+          currentSnapshotHash
+        }
+      };
+    }
+
+    const roadmap = input.roadmap;
+    const executionThreads = roadmap.tasks.map((entry, index) => ({
+      id: entry.id,
+      planId: input.planId,
+      title: entry.title,
+      description: entry.description,
+      order: entry.order ?? index + 1,
+      owner: 'orchestrator',
+      delegateTo: entry.suggestedAgent || 'principal-agent',
+      status: 'pending',
+      dependencies: [...entry.dependencies],
+      priority: entry.priority,
+      acceptanceCriteria: [...(entry.acceptanceCriteria ?? [])],
+      createdAt: new Date().toISOString()
+    }));
+
     return {
-      ok: ideaResult.ok && planResult.ok,
-      message: 'Ideas flow completed, planning output was normalized, and the orchestrator staged execution by phase.',
+      ok: true,
+      message: 'El orquestador recibió el roadmap validado sin volver a ejecutar Ideas ni Planificación.',
       data: {
-        taskId: task.id,
-        ideaResult,
-        planResult,
+        planId: input.planId,
+        snapshotHash: input.snapshotHash,
         roadmap,
-        orchestratedTasks,
         executionThreads,
-        contextRoot: snapshot.rootPath,
         stage: 'orchestrated'
       }
     };
   }
+
 }

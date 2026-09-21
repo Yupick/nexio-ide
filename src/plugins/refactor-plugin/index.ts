@@ -16,7 +16,7 @@ export default function createPlugin(context: PluginContext): PluginInstance {
         message: `Refactor plugin processed ${task.title}.`,
         data: {
           taskId: task.id,
-          plugin: 'refactor',
+          plugin: 'refactor-plugin',
           contextRoot: context?.snapshot?.rootPath ?? 'unknown'
         }
       };

@@ -14,7 +14,10 @@ Validar que el IDE ofrece una experiencia de uso estable, comprensible y segura 
 - [x] Estado visual del approval flow
 - [x] Chat de ideas con sesiones y selección de modelo
 - [x] Cancelación del workflow mediante IPC
+- [x] Pausa, reanudación, retry y heartbeat mediante IPC
 - [x] Cambios multiarchivo con aplicación atómica
+- [x] Ejecución paralela segura con locks de recursos
+- [x] Actividad persistida del workflow consultable por runId
 
 ## Seguridad y sandbox
 - [x] Bloqueo de rutas fuera del workspace
@@ -29,11 +32,12 @@ Validar que el IDE ofrece una experiencia de uso estable, comprensible y segura 
 - [x] Unit tests del core
 - [x] Tests del workflow operativo
 - [x] Smoke UI tests
-- [ ] Flujo completo de negocio automatizado contra un workspace temporal de Electron
+- [x] Flujo completo de negocio automatizado contra un workspace temporal de Electron
 - [x] Pruebas de regresión adicionales sobre plugins
 - [x] Suite completa: 8 suites y 57 tests
 - [x] Smoke E2E: 3 escenarios
 - [x] Build TypeScript sin errores
+- [x] E2E Electron real: plan persistido, ejecución, recuperación y actividad
 
 ## Release candidate gate
 - [x] 0 bugs críticos
@@ -55,4 +59,4 @@ Validar que el IDE ofrece una experiencia de uso estable, comprensible y segura 
 - [x] Checklist de preparación para beta interna y revisión de calidad del producto
 
 ## Observaciones
-La base funcional y los controles de seguridad quedan validados para el release 1.1.0. La automatización de un caso completo de negocio dentro de una instancia Electron real y la migración a Monaco permanecen fuera de este cierre y deben tratarse como trabajo posterior, no como evidencia de esta release.
+La base funcional, los controles de seguridad, la ejecución por plan, la actividad persistida y el caso de negocio en Electron quedan validados. La migración a Monaco, marketplace, vector store y colaboración multiusuario permanecen fuera de este cierre.

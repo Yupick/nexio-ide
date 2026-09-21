@@ -4,18 +4,16 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { createHash } from 'node:crypto';
 
-import { IdeasAgent } from '../agents/ideas-agent';
-import { PlanningAgent } from '../agents/planning-agent';
 import { PrincipalAgent } from '../agents/principal-agent';
 import { AgentOrchestrator } from './orchestrator';
 import type { AgentRuntimeSettings } from './config';
 import { PluginManager } from './plugin-manager';
-import { LlmManager } from './llm/llm-manager';
-import { PromptManager } from './llm/prompt-manager';
-import type { AgentContext, AgentExecutionResult, AgentTask, ProjectSnapshot, PluginRuntimeProfile, Roadmap, StructuredChange, WorkflowEvent } from '../shared/types';
-import type { LlmResponse } from './llm/types';
+import { hasDeclaredResources, ResourceLockManager, resourcesConflict } from './resource-lock-manager';
+import { createProjectSnapshotHash } from './snapshot-hash';
+import { WorkflowRunStore } from './workflow-run-store';
+import { WorkflowEventStore } from './workflow-event-store';
+import type { AgentContext, AgentExecutionResult, AgentTask, OrchestrationInput, PlanRun, ProjectSnapshot, PluginRuntimeProfile, ResourceContract, StructuredChange, WorkflowEvent, WorkflowTaskState } from '../shared/types';
 
 export type ApprovalStatus = 'awaiting_review' | 'approved' | 'rejected';
 
@@ -26,86 +24,32 @@ export interface WorkflowState {
   createdAt: string;
 }
 
-function createExecutionMetadata(task: AgentTask, settings: AgentRuntimeSettings, snapshot: ProjectSnapshot): Record<string, string> {
-  const snapshotHash = createHash('sha256')
-    .update(JSON.stringify({
-      name: snapshot.name,
-      rootPath: snapshot.rootPath,
-      files: [...snapshot.files].sort(),
-      lastUpdated: snapshot.lastUpdated
-    }))
-    .digest('hex')
-    .slice(0, 16);
-
-  const metadata: Record<string, string> = {
-    taskId: task.id,
-    agent: settings.agent,
-    provider: settings.provider,
-    model: settings.model,
-    baseUrl: settings.baseUrl,
-    snapshotHash,
-    startedAt: new Date().toISOString()
+function getTaskResources(task: Pick<WorkflowTaskState, 'readPaths' | 'writePaths' | 'resourceKeys'>): ResourceContract {
+  return {
+    ...(task.readPaths ? { readPaths: [...task.readPaths] } : {}),
+    ...(task.writePaths ? { writePaths: [...task.writePaths] } : {}),
+    ...(task.resourceKeys ? { resourceKeys: [...task.resourceKeys] } : {})
   };
-
-  const ideaSessionId = task.metadata?.ideaSessionId;
-  const ideaModel = task.metadata?.ideaModel;
-  if (typeof ideaSessionId === 'string' && ideaSessionId.trim()) {
-    metadata.ideaSessionId = ideaSessionId;
-  }
-  if (typeof ideaModel === 'string' && ideaModel.trim()) {
-    metadata.ideaModel = ideaModel;
-  }
-
-  return metadata;
 }
 
-function detectLanguageFromSnapshot(snapshot: ProjectSnapshot): string {
-  const counts = new Map<string, number>();
-
-  for (const file of snapshot.files) {
-    const extension = file.split('.').pop()?.toLowerCase();
-    if (!extension) {
-      continue;
+function selectRunnableBatch(tasks: WorkflowTaskState[]): WorkflowTaskState[] {
+  const selected: WorkflowTaskState[] = [];
+  for (const task of tasks) {
+    const resources = getTaskResources(task);
+    if (!hasDeclaredResources(resources)) {
+      return selected.length > 0 ? selected : [task];
     }
-
-    const language =
-      ['ts', 'tsx'].includes(extension) ? 'typescript' :
-      ['js', 'jsx'].includes(extension) ? 'javascript' :
-      extension === 'py' ? 'python' :
-      extension === 'md' ? 'markdown' :
-      null;
-
-    if (!language) {
-      continue;
+    if (selected.every((selectedTask) => !resourcesConflict(getTaskResources(selectedTask), resources))) {
+      selected.push(task);
     }
-
-    counts.set(language, (counts.get(language) ?? 0) + 1);
   }
-
-  if (counts.get('python')) {
-    return 'python';
-  }
-  if (counts.get('typescript')) {
-    return 'typescript';
-  }
-  if (counts.get('javascript')) {
-    return 'javascript';
-  }
-  if (counts.get('markdown')) {
-    return 'markdown';
-  }
-
-  return 'typescript';
+  return selected.length > 0 ? selected : tasks.slice(0, 1);
 }
 
 export class WorkflowRuntime {
-  private readonly ideasAgent = new IdeasAgent();
-  private readonly planningAgent = new PlanningAgent();
   private readonly orchestrator = new AgentOrchestrator();
   private readonly principalAgent: PrincipalAgent;
   private readonly pluginManager: PluginManager;
-  private readonly llmManager = new LlmManager();
-  private readonly promptManager: PromptManager;
   private readonly runtimeSettings: AgentRuntimeSettings;
   private readonly pluginProfiles: Record<string, PluginRuntimeProfile>;
 
@@ -123,7 +67,6 @@ export class WorkflowRuntime {
       ? path.resolve(process.cwd(), 'dist', 'src', 'plugins')
       : path.resolve(process.cwd(), 'src', 'plugins');
     this.pluginManager = new PluginManager(pluginDirectory);
-    this.promptManager = new PromptManager();
     this.principalAgent = new PrincipalAgent();
   }
 
@@ -140,46 +83,31 @@ export class WorkflowRuntime {
     state.approvalStatus = approvalStatus;
   }
 
-  private async runStageLlm(stage: 'ideas' | 'planning' | 'orchestrator' | 'principal', snapshot: ProjectSnapshot, task: AgentTask, promptText: string, snapshotHash: string): Promise<{ stage: string; response: LlmResponse; }> {
-    const stagePrompt = stage === 'ideas'
-      ? `You are the ideas agent. Convert the user request into a safe, read-only proposal for the project and preserve the request context without returning final code directly to the user chat.`
-      : stage === 'planning'
-        ? `You are the planning agent. Convert the incoming proposal into structured tasks, dependencies, and execution priorities. Do not paste raw code into the chat; return a plan only.`
-        : stage === 'orchestrator'
-          ? `You are the orchestrator. Coordinate the plan into execution threads and delegate to the right agents. The user must not see raw code yet.`
-          : `You are the principal agent. Prepare the execution patch, determine the relevant plugin, and keep the output approval-ready.`;
-
-    const response = await this.llmManager.completeWithFallback({
-      prompt: `${promptText}\n\nStage: ${stage}`,
-      system: stagePrompt,
-      temperature: this.runtimeSettings.temperature,
-      model: this.runtimeSettings.model,
-      metadata: {
-        agent: stage,
-        taskId: task.id,
-        snapshotHash
-      }
-    }, [this.runtimeSettings.provider, 'ollama', 'openai', 'gemini', 'grok', 'local']);
-
-    console.log('[workflow-runtime] stage llm response', {
-      stage,
-      provider: response.provider,
-      model: response.metadata?.model ?? this.runtimeSettings.model,
-      textPreview: String(response.text ?? '').slice(0, 220)
-    });
-
-    return { stage, response };
-  }
-
-  public async runWorkflow(snapshot: ProjectSnapshot, task: AgentTask, onEvent?: (event: WorkflowEvent) => void, isCancelled?: () => boolean): Promise<AgentExecutionResult> {
-    const emit = (event: Omit<WorkflowEvent, 'taskId' | 'timestamp'>): void => {
-      onEvent?.({
+  public async runPlanWorkflow(
+    snapshot: ProjectSnapshot,
+    plan: PlanRun,
+    onEvent?: (event: WorkflowEvent) => void,
+    isCancelled?: () => boolean,
+    requestedRunId?: string,
+    isPaused?: () => boolean
+  ): Promise<AgentExecutionResult> {
+    const runId = requestedRunId || `run-${plan.planId}-${Date.now()}`;
+    const eventStore = new WorkflowEventStore(snapshot.rootPath);
+    const emit = (event: Omit<WorkflowEvent, 'taskId' | 'timestamp'>, taskId = runId): void => {
+      const workflowEvent: WorkflowEvent = {
         ...event,
-        taskId: task.id,
+        taskId,
         timestamp: new Date().toISOString()
+      };
+      eventStore.append(workflowEvent, {
+        planId: plan.planId,
+        planRevision: plan.revision,
+        runId,
+        pluginId: typeof event.metadata?.pluginId === 'string' ? event.metadata.pluginId : undefined,
+        status: typeof event.metadata?.status === 'string' ? event.metadata.status : undefined
       });
+      onEvent?.(workflowEvent);
     };
-
     const ensureActive = (): void => {
       if (isCancelled?.()) {
         emit({ type: 'workflow-cancelled', message: 'Workflow cancelado por el usuario.' });
@@ -187,140 +115,202 @@ export class WorkflowRuntime {
       }
     };
 
-    emit({ type: 'workflow-started', message: 'Workflow iniciado.' });
+    if (!plan.roadmap || (plan.status !== 'ready' && plan.status !== 'handed_off')) {
+      return { ok: false, message: 'El plan no está listo para ejecución.', data: { planId: plan.planId, status: plan.status } };
+    }
+
+    const currentSnapshotHash = createProjectSnapshotHash(snapshot);
+    if (currentSnapshotHash !== plan.snapshotHash) {
+      return {
+        ok: false,
+        message: 'El snapshot del plan está obsoleto; genera el plan nuevamente antes de ejecutarlo.',
+        data: { planId: plan.planId, expectedSnapshotHash: plan.snapshotHash, currentSnapshotHash }
+      };
+    }
+
+    emit({ type: 'workflow-started', message: `Ejecución del plan ${plan.planId} iniciada.` });
     ensureActive();
+    const orchestration = this.orchestrator.runPlan(snapshot, {
+      planId: plan.planId,
+      snapshotHash: plan.snapshotHash,
+      roadmap: plan.roadmap
+    } satisfies OrchestrationInput);
+    if (!orchestration.ok) {
+      return orchestration;
+    }
+
+    const runStore = new WorkflowRunStore(snapshot.rootPath);
+    runStore.recoverExpiredLeases();
+    let workflowRun = runStore.get(runId) ?? this.orchestrator.createWorkflowRun(snapshot, {
+      planId: plan.planId,
+      snapshotHash: plan.snapshotHash,
+      roadmap: plan.roadmap
+    }, plan.revision, 3, runId);
+    workflowRun = { ...workflowRun, status: 'running', updatedAt: new Date().toISOString() };
+    runStore.save(workflowRun);
+
     const context: AgentContext = {
       snapshot,
-      roadmap: {
-        version: '1.0.0',
-        summary: 'Operational QA workflow initialized.',
-        tasks: []
-      } as Roadmap,
-      sandbox: {
-        allowedRoots: [snapshot.rootPath],
-        readOnly: true
-      }
+      roadmap: plan.roadmap,
+      sandbox: { allowedRoots: [snapshot.rootPath], readOnly: true }
     };
-
-    const auditTrail: Array<Record<string, unknown>> = [];
-    const pushAudit = (stage: string, metadata: Record<string, unknown> = {}): void => {
-      auditTrail.push({
-        stage,
-        timestamp: new Date().toISOString(),
-        ...metadata
-      });
-    };
-
-    pushAudit('workflow-started', { taskId: task.id, agent: this.runtimeSettings.agent });
-
-    const detectedLanguage = detectLanguageFromSnapshot(snapshot);
-    const snapshotHash = createHash('sha256')
-      .update(JSON.stringify({
-        name: snapshot.name,
-        rootPath: snapshot.rootPath,
-        files: [...snapshot.files].sort(),
-        lastUpdated: snapshot.lastUpdated
-      }))
-      .digest('hex')
-      .slice(0, 16);
-    const llmPrompt = String(task.metadata?.prompt ?? task.title ?? 'Review the current workspace and propose the next best action.').trim();
-    const stageLlmResponses: Array<Record<string, unknown>> = [];
-
-    ensureActive();
-    emit({ type: 'stage-started', stage: 'ideas', message: 'El agente de ideas está preparando la propuesta.' });
-    const ideaLlm = await this.runStageLlm('ideas', snapshot, task, llmPrompt, snapshotHash);
-    ensureActive();
-    stageLlmResponses.push({ stage: ideaLlm.stage, provider: ideaLlm.response.provider, text: ideaLlm.response.text });
-    pushAudit('llm-call', { taskId: task.id, stage: 'ideas', provider: ideaLlm.response.provider, model: ideaLlm.response.metadata?.model ?? this.runtimeSettings.model, ok: Boolean(ideaLlm.response.text) });
-    emit({ type: 'stage-completed', stage: 'ideas', message: 'La propuesta de ideas está lista.', metadata: { provider: ideaLlm.response.provider } });
-
     const pluginInstances = await this.pluginManager.loadAll({
       projectPath: snapshot.rootPath,
       logger: (message: string) => console.log(`[${this.runtimeSettings.agent}] ${message}`)
     }, this.pluginProfiles);
-
     pluginInstances.forEach((plugin) => this.principalAgent.registerPlugin(plugin));
 
-    const promptContext = {
-      template: this.runtimeSettings.agent,
-      provider: this.runtimeSettings.provider,
-      language: detectedLanguage,
-      renderedPrompt: this.promptManager.render(this.runtimeSettings.agent, {
-        project: snapshot.name,
-        task: task.title,
-        provider: this.runtimeSettings.provider,
-        language: detectedLanguage,
-        agent: this.runtimeSettings.agent
-      })
+    const taskResults: Array<Record<string, unknown>> = workflowRun.tasks
+      .filter((task) => task.status === 'succeeded' || task.status === 'failed' || task.status === 'blocked')
+      .map((task) => ({
+        taskId: task.taskId,
+        title: task.title,
+        ok: task.status === 'succeeded',
+        message: typeof task.result?.message === 'string' ? task.result.message : `Tarea ${task.status}.`,
+        ...(task.result ? { result: task.result } : {})
+      }));
+    const changes: StructuredChange[] = [];
+    const resourceLocks = new ResourceLockManager();
+
+    while (true) {
+      if (isPaused?.()) {
+        workflowRun = { ...workflowRun, status: 'paused', updatedAt: new Date().toISOString() };
+        runStore.save(workflowRun);
+        emit({ type: 'workflow-paused', message: `Plan ${plan.planId} pausado.` });
+        return {
+          ok: false,
+          message: `Plan ${plan.planId} pausado y persistido para reanudarlo.`,
+          data: { planId: plan.planId, runId, workflowRun, status: 'paused' }
+        };
+      }
+      const runnableTasks = this.orchestrator.getRunnableTasks(workflowRun);
+      if (runnableTasks.length === 0) {
+        break;
+      }
+
+      const runnableBatch = selectRunnableBatch(runnableTasks);
+      for (const taskState of runnableBatch) {
+        ensureActive();
+        workflowRun = this.orchestrator.markTaskRunning(workflowRun, taskState.taskId);
+        runStore.save(workflowRun);
+      }
+
+      const executions = await Promise.all(runnableBatch.map(async (taskState) => {
+        const taskId = taskState.taskId;
+        const task: AgentTask = {
+          id: taskId,
+          title: taskState.title,
+          description: taskState.description,
+          priority: taskState.priority,
+          dependencies: [...taskState.dependencies],
+          ...(taskState.readPaths ? { readPaths: [...taskState.readPaths] } : {}),
+          ...(taskState.writePaths ? { writePaths: [...taskState.writePaths] } : {}),
+          ...(taskState.resourceKeys ? { resourceKeys: [...taskState.resourceKeys] } : {}),
+          metadata: {
+            planId: plan.planId,
+            runId,
+            suggestedAgent: taskState.pluginId,
+            requiredCapabilities: taskState.requiredCapabilities,
+            acceptanceCriteria: taskState.acceptanceCriteria,
+            ...(taskState.readPaths ? { readPaths: [...taskState.readPaths] } : {}),
+            ...(taskState.writePaths ? { writePaths: [...taskState.writePaths] } : {}),
+            ...(taskState.resourceKeys ? { resourceKeys: [...taskState.resourceKeys] } : {})
+          }
+        };
+        emit({ type: 'stage-started', stage: 'principal', message: `Ejecutando tarea planificada: ${task.title}.` }, taskId);
+        let lease;
+        try {
+          const resources = getTaskResources(taskState);
+          if (hasDeclaredResources(resources)) {
+            lease = await resourceLocks.acquire(taskId, resources);
+          }
+          ensureActive();
+          const result = await this.principalAgent.execute(context, task);
+          ensureActive();
+          return { taskState, task, result };
+        } catch (error) {
+          if (error instanceof Error && error.message === 'WORKFLOW_CANCELLED') {
+            return { taskState, task, cancelled: true as const };
+          }
+          return {
+            taskState,
+            task,
+            result: {
+              ok: false,
+              message: error instanceof Error ? error.message : 'La tarea falló durante la ejecución.',
+              data: { taskId, resourceLock: true, retryable: true }
+            }
+          };
+        } finally {
+          lease?.release();
+        }
+      }));
+
+      if (executions.some((execution) => execution.cancelled)) {
+        throw new Error('WORKFLOW_CANCELLED');
+      }
+
+      for (const execution of executions) {
+        const result = execution.result as AgentExecutionResult;
+        const resultData = result.data && typeof result.data === 'object' ? result.data as Record<string, unknown> : {};
+        const nestedResults = Array.isArray(resultData.results) ? resultData.results : [];
+        const blocked = resultData.blocked === true || nestedResults.some((entry) => {
+          if (!entry || typeof entry !== 'object') {
+            return false;
+          }
+          const nestedData = (entry as Record<string, unknown>).data;
+          return Boolean(nestedData && typeof nestedData === 'object' && (nestedData as Record<string, unknown>).blocked === true);
+        });
+        const taskChanges = Array.isArray(resultData.changes)
+          ? resultData.changes.filter((change): change is StructuredChange => Boolean(change && typeof change === 'object' && typeof (change as Record<string, unknown>).targetPath === 'string' && typeof (change as Record<string, unknown>).patch === 'string'))
+          : [];
+        changes.push(...taskChanges);
+        taskResults.push({ taskId: execution.task.id, title: execution.task.title, ok: result.ok, message: result.message, changes: taskChanges });
+        workflowRun = this.orchestrator.markTaskResult(workflowRun, execution.task.id, result.ok, {
+          ...resultData,
+          message: result.message,
+          ...(blocked ? { blocked: true } : {})
+        });
+        runStore.save(workflowRun);
+        emit({ type: 'stage-completed', stage: 'principal', message: `Tarea planificada preparada para revisión: ${execution.task.title}.` }, execution.task.id);
+      }
+    }
+
+    workflowRun = this.orchestrator.blockTasksWithFailedDependencies(workflowRun);
+    runStore.save(workflowRun);
+    const hasBlockedTask = workflowRun.tasks.some((task) => task.status === 'blocked' || task.status === 'failed');
+    const hasPendingTask = workflowRun.tasks.some((task) => ['pending', 'ready', 'retryable', 'running'].includes(task.status));
+    workflowRun = {
+      ...workflowRun,
+      status: hasBlockedTask || hasPendingTask ? 'blocked' : 'awaiting_review',
+      updatedAt: new Date().toISOString()
     };
-
-    const ideaResult = await this.ideasAgent.think(context, task);
-    ensureActive();
-    pushAudit('idea-generation', { taskId: task.id, ok: ideaResult.ok });
-
-    emit({ type: 'stage-started', stage: 'planning', message: 'El agente de planificación está organizando las tareas.' });
-    const planLlm = await this.runStageLlm('planning', snapshot, task, `Ideas result: ${ideaResult.message}. User request: ${llmPrompt}`, snapshotHash);
-    ensureActive();
-    stageLlmResponses.push({ stage: planLlm.stage, provider: planLlm.response.provider, text: planLlm.response.text });
-    pushAudit('llm-call', { taskId: task.id, stage: 'planning', provider: planLlm.response.provider, model: planLlm.response.metadata?.model ?? this.runtimeSettings.model, ok: Boolean(planLlm.response.text) });
-    emit({ type: 'stage-completed', stage: 'planning', message: 'El plan técnico está listo.', metadata: { provider: planLlm.response.provider } });
-
-    const planResult = await this.planningAgent.plan(context, task);
-    ensureActive();
-    pushAudit('planning', { taskId: task.id, ok: planResult.ok });
-
-    emit({ type: 'stage-started', stage: 'orchestrator', message: 'El orquestador está asignando las tareas.' });
-    const orchestratorLlm = await this.runStageLlm('orchestrator', snapshot, task, `Plan summary: ${planResult.message}. User request: ${llmPrompt}`, snapshotHash);
-    ensureActive();
-    stageLlmResponses.push({ stage: orchestratorLlm.stage, provider: orchestratorLlm.response.provider, text: orchestratorLlm.response.text });
-    pushAudit('llm-call', { taskId: task.id, stage: 'orchestrator', provider: orchestratorLlm.response.provider, model: orchestratorLlm.response.metadata?.model ?? this.runtimeSettings.model, ok: Boolean(orchestratorLlm.response.text) });
-    emit({ type: 'stage-completed', stage: 'orchestrator', message: 'Las tareas fueron asignadas a los agentes disponibles.', metadata: { provider: orchestratorLlm.response.provider } });
-
-    const orchestratorResult = await this.orchestrator.runIdeaWorkflow(snapshot, task);
-    ensureActive();
-    pushAudit('orchestrator', { taskId: task.id, ok: orchestratorResult.ok });
-
-    emit({ type: 'stage-started', stage: 'principal', message: 'El agente principal está preparando los cambios.' });
-    const principalLlm = await this.runStageLlm('principal', snapshot, task, `Execution plan: ${orchestratorResult.message}. User request: ${llmPrompt}`, snapshotHash);
-    ensureActive();
-    stageLlmResponses.push({ stage: principalLlm.stage, provider: principalLlm.response.provider, text: principalLlm.response.text });
-    pushAudit('llm-call', { taskId: task.id, stage: 'principal', provider: principalLlm.response.provider, model: principalLlm.response.metadata?.model ?? this.runtimeSettings.model, ok: Boolean(principalLlm.response.text) });
-    emit({ type: 'stage-completed', stage: 'principal', message: 'La ejecución quedó preparada para revisión.', metadata: { provider: principalLlm.response.provider } });
-
-    const principalResult = await this.principalAgent.execute(context, task);
-    ensureActive();
-    pushAudit('principal-execution', { taskId: task.id, ok: principalResult.ok, pluginCount: principalResult.data?.executedPlugins ?? 0 });
-
-    const executionMetadata = createExecutionMetadata(task, this.runtimeSettings, snapshot);
-    const changes = Array.isArray((principalResult.data as Record<string, unknown> | undefined)?.changes)
-      ? ((principalResult.data as Record<string, unknown>).changes as StructuredChange[])
-      : [];
-    const pendingPatch = changes.map((change) => change.patch).filter(Boolean).join('\n\n');
-
-    const resultOk = ideaResult.ok && planResult.ok && orchestratorResult.ok && principalResult.ok;
-    pushAudit('workflow-complete', { taskId: task.id, ok: resultOk });
-    emit({ type: 'workflow-completed', message: resultOk ? 'Workflow completado y listo para revisión.' : 'Workflow completado con errores.' });
-
+    runStore.save(workflowRun);
+    emit({ type: 'workflow-completed', message: `Plan ${plan.planId} completado y listo para revisión.` });
     return {
-      ok: resultOk,
-      message: `End-to-end workflow reached the approval gate using ${this.runtimeSettings.provider} for agent ${this.runtimeSettings.agent}. The system honored the ideas -> planning -> orchestrator -> principal execution chain with sequential model calls at each stage.`,
+      ok: !hasBlockedTask && !hasPendingTask && taskResults.every((result) => result.ok),
+      message: `El plan ${plan.planId} fue ejecutado sin regenerar Ideas ni Planificación y quedó listo para aprobación.`,
       data: {
-        taskId: task.id,
-        ideaResult,
-        planResult,
-        orchestratorResult,
-        principalResult,
-        executionMetadata,
-        llmResponse: principalLlm.response,
-        stageLlmResponses,
-        approvalStatus: 'awaiting_review',
-        pendingPatch,
+        planId: plan.planId,
+        runId,
+        orchestration,
+        workflowRun,
+        taskResults,
         changes,
-        agentRuntime: { ...this.runtimeSettings },
+        pendingPatch: changes.map((change) => change.patch).join('\n\n'),
+        approvalStatus: 'awaiting_review',
         availablePlugins: pluginInstances.map((plugin) => plugin.id),
-        promptContext,
-        auditTrail
+        executionMetadata: {
+          taskId: runId,
+          planId: plan.planId,
+          agent: this.runtimeSettings.agent,
+          provider: this.runtimeSettings.provider,
+          model: this.runtimeSettings.model,
+          snapshotHash: plan.snapshotHash,
+          startedAt: new Date().toISOString()
+        }
       }
     };
   }
+
 }

@@ -27,6 +27,20 @@ export class PluginManager {
     return sourceEntry;
   }
 
+  private readManifest(pluginDir: string): Partial<PluginDefinition> {
+    const manifestPath = path.join(this.pluginsDir, pluginDir, 'manifest.json');
+    if (!fs.existsSync(manifestPath)) {
+      return {};
+    }
+
+    try {
+      const parsed = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as Partial<PluginDefinition>;
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+
   public async loadAll(context: PluginContext, profiles: Record<string, PluginRuntimeProfile> = {}): Promise<PluginInstance[]> {
     if (!fs.existsSync(this.pluginsDir)) {
       return [];
@@ -56,10 +70,32 @@ export class PluginManager {
       }
 
       const profile = profiles[pluginDir] ?? {};
+      const manifest = this.readManifest(pluginDir);
       const instance = factory({ ...context, config: profile });
       if (instance && typeof instance.execute === 'function') {
+        if (manifest.contractVersion && manifest.contractVersion !== '1') {
+          context.logger(`Plugin ${pluginDir} uses unsupported contract ${manifest.contractVersion}.`);
+          continue;
+        }
         if (Array.isArray(profile.capabilities)) {
           instance.capabilities = [...profile.capabilities];
+        }
+        const configuredTimeout = Number.isFinite(profile.timeoutMs) ? profile.timeoutMs : undefined;
+        const manifestTimeout = Number.isFinite(manifest.timeoutMs) ? manifest.timeoutMs : undefined;
+        if (configuredTimeout || manifestTimeout) {
+          instance.timeoutMs = Math.min(configuredTimeout ?? Number.POSITIVE_INFINITY, manifestTimeout ?? Number.POSITIVE_INFINITY);
+        }
+        if (manifest.permissions) {
+          instance.permissions = manifest.permissions;
+        }
+        if (Array.isArray(manifest.readPaths)) {
+          instance.readPaths = [...manifest.readPaths];
+        }
+        if (Array.isArray(manifest.writePaths)) {
+          instance.writePaths = [...manifest.writePaths];
+        }
+        if (Array.isArray(manifest.resourceKeys)) {
+          instance.resourceKeys = [...manifest.resourceKeys];
         }
         await instance.init({ ...context, config: profile });
         loaded.push(instance);
@@ -76,14 +112,24 @@ export class PluginManager {
 
     return fs.readdirSync(this.pluginsDir, { withFileTypes: true })
       .filter((entry) => entry.isDirectory())
-      .map((entry) => ({
-        id: entry.name,
-        name: entry.name,
-        version: '0.1.0',
-        type: 'agent',
-        description: `${entry.name} plugin`,
-        entry: path.join(this.pluginsDir, entry.name),
-        capabilities: []
-      }));
+      .map((entry) => {
+        const manifest = this.readManifest(entry.name);
+        return {
+          id: manifest.id || entry.name,
+          name: manifest.name || entry.name,
+          version: manifest.version || '0.1.0',
+          type: manifest.type || 'agent',
+          description: manifest.description || `${entry.name} plugin`,
+          entry: path.join(this.pluginsDir, entry.name),
+          capabilities: manifest.capabilities || [],
+          ...(manifest.taskTypes ? { taskTypes: manifest.taskTypes } : {}),
+          ...(manifest.contractVersion ? { contractVersion: manifest.contractVersion } : {}),
+          ...(manifest.readPaths ? { readPaths: [...manifest.readPaths] } : {}),
+          ...(manifest.writePaths ? { writePaths: [...manifest.writePaths] } : {}),
+          ...(manifest.resourceKeys ? { resourceKeys: [...manifest.resourceKeys] } : {}),
+          ...(manifest.timeoutMs ? { timeoutMs: manifest.timeoutMs } : {}),
+          ...(manifest.permissions ? { permissions: manifest.permissions } : {})
+        };
+      });
   }
 }

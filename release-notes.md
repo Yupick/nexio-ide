@@ -10,6 +10,7 @@
 - Structured multi-file changes with SHA-256 base-content conflict checks and atomic application.
 - Runtime plugin enablement, capabilities and restricted auto-approval policy enforced by the backend.
 - Workflow progress events and user cancellation exposed through the Electron IPC boundary.
+- Persisted workflow activity, plan-based execution, resource locks, plugin timeout/health/permission guards, and Electron recovery checks.
 - Unit, regression and smoke E2E checks executed successfully with an approval-ready diff cycle.
 
 ## Production gate status
@@ -23,6 +24,8 @@
 - [x] Multi-file patch atomicity and conflict protection verified
 - [x] Workflow cancellation and progress events verified
 - [x] Plugin enablement and auto-approval policy verified
+- [x] Plan execution, resource locking and plugin timeout/permission checks verified
+- [x] Electron workflow recovery and persisted activity verified
 
 ## Release recommendation
 

@@ -24,6 +24,8 @@
         --warning: #fbbf24;
         --border: rgba(148, 163, 184, 0.22);
         --shadow: 0 24px 60px rgba(2, 6, 23, 0.45);
+        --sidebar-width: 270px;
+        --right-panel-width: 340px;
       }
 
       * { box-sizing: border-box; }
@@ -41,12 +43,52 @@
       }
 
       #app {
+        position: relative;
         height: 100vh;
         display: grid;
-        grid-template-columns: 270px minmax(0, 1fr) 340px;
+        grid-template-columns: var(--sidebar-width) minmax(320px, 1fr) var(--right-panel-width);
         background:
           radial-gradient(circle at top left, rgba(94, 162, 255, 0.17), transparent 28%),
           linear-gradient(180deg, var(--bg-soft) 0%, #020817 100%);
+      }
+
+      .panel-resize-handle {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 8px;
+        z-index: 10;
+        cursor: col-resize;
+        touch-action: none;
+        user-select: none;
+      }
+
+      .panel-resize-handle::after {
+        content: '';
+        position: absolute;
+        inset: 0 3px;
+        background: transparent;
+        transition: background 120ms ease;
+      }
+
+      .panel-resize-handle:hover::after,
+      .panel-resize-handle:focus-visible::after,
+      #app.is-resizing .panel-resize-handle::after {
+        background: var(--accent);
+      }
+
+      .sidebar-resize-handle {
+        left: calc(var(--sidebar-width) - 4px);
+      }
+
+      .right-panel-resize-handle {
+        right: calc(var(--right-panel-width) - 4px);
+      }
+
+      #app.is-resizing,
+      #app.is-resizing * {
+        cursor: col-resize !important;
+        user-select: none !important;
       }
 
       .sidebar, .panel {
@@ -775,6 +817,12 @@
         display: inline-flex;
       }
 
+      .workflow-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+      }
+
       .prompt-bar {
         display: flex;
         gap: 0.5rem;
@@ -1131,6 +1179,18 @@
         </div>
       </aside>
 
+      <div
+        class="panel-resize-handle sidebar-resize-handle"
+        data-panel-resize="sidebar"
+        role="separator"
+        aria-label="Ajustar ancho de barra lateral"
+        aria-orientation="vertical"
+        aria-valuemin="220"
+        aria-valuemax="420"
+        aria-valuenow="270"
+        tabindex="0"
+      ></div>
+
       <main class="center">
         <div class="center-header">
           <div class="window-header-row">
@@ -1179,6 +1239,18 @@
         </div>
       </main>
 
+      <div
+        class="panel-resize-handle right-panel-resize-handle"
+        data-panel-resize="right-panel"
+        role="separator"
+        aria-label="Ajustar ancho de panel de agentes"
+        aria-orientation="vertical"
+        aria-valuemin="280"
+        aria-valuemax="520"
+        aria-valuenow="340"
+        tabindex="0"
+      ></div>
+
       <aside class="panel">
         <div class="panel-block">
           <span class="badge">Estado de agentes</span>
@@ -1200,7 +1272,12 @@
               <span id="workflow-session-label">Sesión 1</span>
               <span id="workflow-model-label">qwen2.5-coder:0.5b</span>
             </div>
-            <button class="workflow-cancel" id="workflow-cancel-button" type="button">Cancelar workflow</button>
+            <div class="workflow-controls">
+              <button class="workflow-cancel" id="workflow-cancel-button" type="button">Cancelar workflow</button>
+              <button class="workflow-cancel" id="workflow-pause-button" type="button">Pausar</button>
+              <button class="workflow-cancel" id="workflow-resume-button" type="button">Reanudar</button>
+              <button class="workflow-cancel" id="workflow-retry-button" type="button">Reintentar tarea</button>
+            </div>
           </div>
         </div>
 
@@ -1225,10 +1302,10 @@
               <button class="ghost-btn" id="new-idea-session-btn" type="button">Nueva sesión</button>
             </div>
             <div class="idea-session-row">
-              <select id="idea-flow-mode-select" class="idea-flow-mode-select" aria-label="Modo de trabajo del agente de ideas">
-                <option value="proposal">Solo propuesta</option>
-                <option value="plan">Enviar a planificación</option>
-              </select>
+              <button class="ghost-btn" id="generate-plan-button" type="button">Generar plan</button>
+              <button class="ghost-btn" id="handoff-plan-button" type="button" disabled>Enviar al orquestador</button>
+              <button class="ghost-btn" id="execute-plan-button" type="button" disabled>Ejecutar plan</button>
+              <span id="plan-status" class="workflow-state-label">Sin plan generado</span>
             </div>
           </div>
 
@@ -1241,6 +1318,21 @@
             <input id="file-attachment-input" type="file" hidden />
             <button id="prompt-submit" class="prompt-button" type="button">Enviar</button>
           </div>
+        </div>
+
+        <div class="panel-block">
+          <h3>Plan de trabajo</h3>
+          <div class="diff-box" id="plan-preview">La conversación todavía no tiene un plan generado.</div>
+        </div>
+
+        <div class="panel-block">
+          <h3>Ejecución</h3>
+          <div class="diff-box" id="workflow-run-preview">No hay una ejecución activa.</div>
+        </div>
+
+        <div class="panel-block">
+          <h3>Actividad</h3>
+          <div class="diff-box" id="workflow-activity-preview">La actividad aparecerá al ejecutar un plan.</div>
         </div>
 
         <div class="panel-block">
@@ -1293,6 +1385,151 @@
       const workflowModelLabel = document.getElementById('workflow-model-label');
       const workflowProgressSteps = [...document.querySelectorAll('.workflow-progress-step')];
       const workflowCancelButton = document.getElementById('workflow-cancel-button');
+      const workflowPauseButton = document.getElementById('workflow-pause-button');
+      const workflowResumeButton = document.getElementById('workflow-resume-button');
+      const workflowRetryButton = document.getElementById('workflow-retry-button');
+      const PANEL_LAYOUT_STORAGE_KEY = 'nexio-panel-layout';
+      const PANEL_LAYOUT_DEFAULTS = Object.freeze({ sidebarWidth: 270, rightPanelWidth: 340 });
+      const PANEL_LAYOUT_BOUNDS = Object.freeze({
+        sidebarWidth: { min: 220, max: 420 },
+        rightPanelWidth: { min: 280, max: 520 }
+      });
+      let panelLayout = { ...PANEL_LAYOUT_DEFAULTS };
+
+      function clampPanelWidth(value, bounds, fallback) {
+        const numericValue = Number(value);
+        if (!Number.isFinite(numericValue)) {
+          return fallback;
+        }
+        return Math.round(Math.min(bounds.max, Math.max(bounds.min, numericValue)));
+      }
+
+      function persistPanelLayout() {
+        try {
+          window.localStorage.setItem(PANEL_LAYOUT_STORAGE_KEY, JSON.stringify(panelLayout));
+        } catch (error) {
+          console.warn('Unable to persist panel layout', error);
+        }
+      }
+
+      function readStoredPanelLayout() {
+        try {
+          const raw = window.localStorage.getItem(PANEL_LAYOUT_STORAGE_KEY);
+          if (!raw) {
+            return null;
+          }
+
+          const parsed = JSON.parse(raw);
+          if (!parsed || typeof parsed !== 'object') {
+            return null;
+          }
+
+          const sidebarWidth = Number(parsed.sidebarWidth);
+          const rightPanelWidth = Number(parsed.rightPanelWidth);
+          if (!Number.isFinite(sidebarWidth) || !Number.isFinite(rightPanelWidth)) {
+            return null;
+          }
+
+          return { sidebarWidth, rightPanelWidth };
+        } catch (error) {
+          console.warn('Unable to load panel layout', error);
+          return null;
+        }
+      }
+
+      function applyPanelLayout(nextLayout, persist = false) {
+        panelLayout = {
+          sidebarWidth: clampPanelWidth(nextLayout.sidebarWidth, PANEL_LAYOUT_BOUNDS.sidebarWidth, PANEL_LAYOUT_DEFAULTS.sidebarWidth),
+          rightPanelWidth: clampPanelWidth(nextLayout.rightPanelWidth, PANEL_LAYOUT_BOUNDS.rightPanelWidth, PANEL_LAYOUT_DEFAULTS.rightPanelWidth)
+        };
+
+        const app = document.getElementById('app');
+        app?.style.setProperty('--sidebar-width', `${panelLayout.sidebarWidth}px`);
+        app?.style.setProperty('--right-panel-width', `${panelLayout.rightPanelWidth}px`);
+        document.querySelector('[data-panel-resize="sidebar"]')?.setAttribute('aria-valuenow', String(panelLayout.sidebarWidth));
+        document.querySelector('[data-panel-resize="right-panel"]')?.setAttribute('aria-valuenow', String(panelLayout.rightPanelWidth));
+
+        if (persist) {
+          persistPanelLayout();
+        }
+      }
+
+      function initializePanelLayout() {
+        const app = document.getElementById('app');
+        const handles = [...document.querySelectorAll('[data-panel-resize]')];
+        if (!app || !handles.length) {
+          return;
+        }
+
+        applyPanelLayout(readStoredPanelLayout() ?? PANEL_LAYOUT_DEFAULTS);
+        let activeResize = null;
+
+        const finishResize = (event) => {
+          if (!activeResize || (event && event.pointerId !== activeResize.pointerId)) {
+            return;
+          }
+          if (activeResize.handle.hasPointerCapture?.(activeResize.pointerId)) {
+            activeResize.handle.releasePointerCapture(activeResize.pointerId);
+          }
+          activeResize = null;
+          app.classList.remove('is-resizing');
+          persistPanelLayout();
+        };
+
+        handles.forEach((handle) => {
+          const panel = handle.dataset.panelResize;
+          const widthKey = panel === 'sidebar' ? 'sidebarWidth' : panel === 'right-panel' ? 'rightPanelWidth' : null;
+          if (!widthKey) {
+            return;
+          }
+
+          handle.addEventListener('pointerdown', (event) => {
+            if (event.button !== 0) {
+              return;
+            }
+            activeResize = { handle, panel, pointerId: event.pointerId, startX: event.clientX, startWidth: panelLayout[widthKey] };
+            handle.setPointerCapture(event.pointerId);
+            app.classList.add('is-resizing');
+            event.preventDefault();
+          });
+
+          handle.addEventListener('pointermove', (event) => {
+            if (!activeResize || activeResize.handle !== handle || activeResize.pointerId !== event.pointerId) {
+              return;
+            }
+            const delta = event.clientX - activeResize.startX;
+            const nextWidth = activeResize.panel === 'sidebar'
+              ? activeResize.startWidth + delta
+              : activeResize.startWidth - delta;
+            applyPanelLayout({ ...panelLayout, [widthKey]: nextWidth });
+          });
+
+          handle.addEventListener('pointerup', finishResize);
+          handle.addEventListener('pointercancel', finishResize);
+          handle.addEventListener('lostpointercapture', finishResize);
+
+          handle.addEventListener('keydown', (event) => {
+            const step = event.shiftKey ? 20 : 10;
+            let nextWidth = panelLayout[widthKey];
+            if (event.key === 'ArrowRight') {
+              nextWidth += step;
+            } else if (event.key === 'ArrowLeft') {
+              nextWidth -= step;
+            } else if (event.key === 'Home') {
+              nextWidth = PANEL_LAYOUT_BOUNDS[widthKey].min;
+            } else if (event.key === 'End') {
+              nextWidth = PANEL_LAYOUT_BOUNDS[widthKey].max;
+            } else {
+              return;
+            }
+            applyPanelLayout({ ...panelLayout, [widthKey]: nextWidth }, true);
+            event.preventDefault();
+          });
+        });
+
+        window.addEventListener('pointerup', finishResize);
+        window.addEventListener('pointercancel', finishResize);
+      }
 
       const PROVIDER_LABELS = {
         ollama: 'Ollama',
@@ -1326,6 +1563,10 @@
         pendingChanges: [],
         pendingExecutionMetadata: null,
         latestWorkflowTaskId: null,
+        latestWorkflowRun: null,
+        currentPlanId: null,
+        currentPlanStatus: 'draft',
+        currentPlan: null,
         workflowHistory: [],
         debugEnabled: true,
         debugEntries: [],
@@ -1347,6 +1588,7 @@
         ],
         activeIdeaSessionId: 'session-1',
         ideaFlowMode: 'proposal',
+        ideaChatPending: false,
         autoApproveChanges: false,
         agentStatuses: {
           ideas: 'online',
@@ -1435,6 +1677,10 @@
         }
         if (event.type === 'workflow-completed' || event.type === 'workflow-cancelled' || event.type === 'workflow-failed') {
           setWorkflowCancelable(false);
+        }
+        if (event.type === 'workflow-paused') {
+          setWorkflowCancelable(false);
+          setStatus('Workflow pausado');
         }
         if (event.type === 'workflow-cancelled') {
           updateWorkflowSummary('planning', 'Workflow cancelado');
@@ -1570,6 +1816,25 @@
         if (!changes.length && approvalStatus.textContent !== 'Aprobado' && approvalStatus.textContent !== 'Descartado') {
           approvalStatus.textContent = 'Sin cambio estructurado aplicable';
         }
+      }
+
+      function clearPendingChangeState() {
+        state.pendingPatch = '';
+        state.pendingChange = null;
+        state.pendingChanges = [];
+        state.pendingExecutionMetadata = null;
+        diffBox.textContent = 'No hay cambios estructurados pendientes.';
+        updateDiffSummary();
+        approvalStatus.textContent = 'Sin cambio estructurado aplicable';
+        approvalStatus.style.color = '#e2e8f0';
+        diffBox.style.borderColor = 'rgba(148, 163, 184, 0.2)';
+        updateApprovalControls();
+      }
+
+      function setIdeaChatPending(pending) {
+        state.ideaChatPending = pending;
+        promptSubmit.disabled = pending;
+        promptInput.disabled = pending;
       }
 
       function applySuggestionAtSelection(suggestion) {
@@ -2550,7 +2815,8 @@
         window.localStorage.setItem('nexio-idea-sessions', JSON.stringify({
           activeIdeaSessionId: state.activeIdeaSessionId,
           ideaSessions: state.ideaSessions,
-          ideaFlowMode: state.ideaFlowMode,
+          currentPlanId: state.currentPlanId,
+          currentPlanStatus: state.currentPlanStatus,
           autoApproveChanges: state.autoApproveChanges
         }));
       }
@@ -2568,8 +2834,11 @@
           if (parsed.activeIdeaSessionId) {
             state.activeIdeaSessionId = parsed.activeIdeaSessionId;
           }
-          if (parsed.ideaFlowMode) {
-            state.ideaFlowMode = parsed.ideaFlowMode;
+          if (parsed.currentPlanId) {
+            state.currentPlanId = parsed.currentPlanId;
+          }
+          if (parsed.currentPlanStatus) {
+            state.currentPlanStatus = parsed.currentPlanStatus;
           }
           if (typeof parsed.autoApproveChanges === 'boolean') {
             state.autoApproveChanges = parsed.autoApproveChanges;
@@ -2581,7 +2850,6 @@
 
       function renderIdeaSessionSelector() {
         const selector = document.getElementById('idea-session-select');
-        const flowModeSelect = document.getElementById('idea-flow-mode-select');
         const modelSelect = document.getElementById('ideas-model-select');
         if (!selector) {
           return;
@@ -2590,10 +2858,6 @@
         selector.innerHTML = state.ideaSessions.map((session) => `
           <option value="${session.id}" ${session.id === state.activeIdeaSessionId ? 'selected' : ''}>${session.name}</option>
         `).join('');
-
-        if (flowModeSelect) {
-          flowModeSelect.value = state.ideaFlowMode;
-        }
 
         if (modelSelect) {
           const activeSession = getActiveIdeaSession();
@@ -2632,17 +2896,235 @@
         saveIdeaSessions();
       }
 
+      function renderPlanPreview(plan) {
+        const preview = document.getElementById('plan-preview');
+        const planStatus = document.getElementById('plan-status');
+        const handoffButton = document.getElementById('handoff-plan-button');
+        const executeButton = document.getElementById('execute-plan-button');
+        if (!preview || !planStatus || !handoffButton || !executeButton) {
+          return;
+        }
+
+        state.currentPlan = plan || null;
+        state.currentPlanId = plan?.planId || null;
+        state.currentPlanStatus = plan?.status || 'draft';
+        planStatus.textContent = plan
+          ? `Plan ${plan.status}: ${plan.planId}`
+          : 'Sin plan generado';
+        handoffButton.disabled = !plan || plan.status !== 'ready';
+        executeButton.disabled = !plan || plan.status !== 'handed_off';
+        preview.textContent = plan?.roadmap?.tasks?.length
+          ? plan.roadmap.tasks.map((task) => `${task.order ?? ''}. ${task.title} [${task.priority}]\n${task.description}`).join('\n\n')
+          : 'La conversación todavía no tiene un plan generado.';
+        saveIdeaSessions();
+      }
+
+      function renderWorkflowRun(run) {
+        const preview = document.getElementById('workflow-run-preview');
+        if (!preview) {
+          return;
+        }
+        state.latestWorkflowRun = run || null;
+        if (!run) {
+          preview.textContent = 'No hay una ejecución activa.';
+          return;
+        }
+        preview.textContent = [
+          `Run: ${run.runId}`,
+          `Estado: ${run.status}`,
+          ...run.tasks.map((task) => `${task.taskId}: ${task.status} | plugin=${task.pluginId || 'sin asignar'} | intento=${task.attempt}/${task.maxAttempts}${task.leaseExpiresAt ? ` | lease=${task.leaseExpiresAt}` : ''}${task.result?.blocked ? ' | bloqueada' : ''}`)
+        ].join('\n');
+      }
+
+      async function refreshWorkflowActivity(runId) {
+        if (!runId || !window.electronAPI?.getWorkflowActivity) {
+          return;
+        }
+        const result = await window.electronAPI.getWorkflowActivity(runId);
+        const preview = document.getElementById('workflow-activity-preview');
+        if (!preview || !result?.ok) {
+          return;
+        }
+        preview.textContent = result.data?.events?.length
+          ? result.data.events.map((event) => `${event.timestamp} | ${event.type} | ${event.taskId} | ${event.message}`).join('\n')
+          : 'La ejecución todavía no tiene actividad persistida.';
+      }
+
+      async function generatePlanFromIdeas() {
+        if (state.ideaChatPending) {
+          return;
+        }
+
+        const session = getActiveIdeaSession();
+        if (!session.messages.some((message) => message.role === 'user')) {
+          setStatus('Escribe una idea antes de generar el plan');
+          return;
+        }
+
+        state.ideaChatPending = true;
+        setStatus('Generando plan desde la conversación...');
+        updateWorkflowSummary('planning', 'Generando plan');
+        setAgentStatus('planning', 'in-use');
+        try {
+          const model = session.model || state.agentConfig.model;
+          const settings = {
+            provider: state.agentConfig.provider,
+            model,
+            baseUrl: state.agentConfig.baseUrl,
+            apiKey: state.agentConfig.apiKey,
+            temperature: Number(state.agentConfig.temperature ?? 0.4)
+          };
+          const result = await window.electronAPI.generatePlan({
+            sessionId: session.id,
+            parentPlanId: state.currentPlanId || undefined,
+            sourceMessageIds: session.messages.slice(-16).map((message, index) => `${session.id}-${index}`),
+            transcript: {
+              sessionId: session.id,
+              messages: session.messages.slice(-16),
+              context: {
+                activeFile: state.activeFile,
+                activeFileContent: editor.value,
+                project: { name: state.config?.workspaceRoot || 'nexio-ide' }
+              },
+              settings
+            },
+            settings
+          });
+          if (!result?.ok || !result.data?.plan) {
+            throw new Error(result?.message || 'El planificador no pudo generar un plan.');
+          }
+          renderPlanPreview(result.data.plan);
+          appendIdeaChatMessage('agent', `Plan generado: ${result.data.plan.roadmap?.summary || 'revisa las tareas propuestas.'}`);
+          addAgentLog('Ideas → Planificación', `Plan listo: ${result.data.plan.planId}`);
+          setStatus('Plan generado y listo para revisión');
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error ?? 'Unknown planning error');
+          setStatus('No se pudo generar el plan');
+          appendIdeaChatMessage('agent', `No se pudo generar el plan: ${errorMessage}`);
+          addAgentLog('Ideas → Planificación', `Error: ${errorMessage}`);
+        } finally {
+          setAgentStatus('planning', 'online');
+          state.ideaChatPending = false;
+        }
+      }
+
+      async function handoffCurrentPlan() {
+        if (!state.currentPlanId || state.currentPlanStatus !== 'ready' || state.ideaChatPending) {
+          return;
+        }
+
+        state.ideaChatPending = true;
+        setStatus('Enviando plan al orquestador...');
+        setAgentStatus('principal', 'in-use');
+        try {
+          const result = await window.electronAPI.handoffPlan(state.currentPlanId);
+          if (!result?.ok) {
+            throw new Error(result?.message || 'El orquestador rechazó el plan.');
+          }
+          renderPlanPreview({ ...state.currentPlan, status: 'handed_off' });
+          appendIdeaChatMessage('agent', 'El plan fue recibido por el orquestador y quedó preparado para ejecución.');
+          addAgentLog('Planificación → Orquestador', `Plan entregado: ${state.currentPlanId}`);
+          setStatus('Plan entregado al orquestador');
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error ?? 'Unknown handoff error');
+          appendIdeaChatMessage('agent', `No se pudo entregar el plan al orquestador: ${errorMessage}`);
+          setStatus('No se pudo entregar el plan');
+        } finally {
+          setAgentStatus('principal', 'online');
+          state.ideaChatPending = false;
+        }
+      }
+
+      async function executeCurrentPlan() {
+        if (!state.currentPlanId || state.currentPlanStatus !== 'handed_off' || state.ideaChatPending) {
+          return;
+        }
+
+        state.ideaChatPending = true;
+        setStatus('Ejecutando plan...');
+        setWorkflowCancelable(true);
+        updateWorkflowSummary('execution', 'Ejecutando plan');
+        setAgentStatus('principal', 'in-use');
+        try {
+          const model = getActiveIdeaSession().model || state.agentConfig.model;
+          const result = await window.electronAPI.runAgentWorkflow(state.currentPlanId, {
+            provider: state.agentConfig.provider,
+            agent: 'principal',
+            model,
+            autoApproveChanges: state.autoApproveChanges,
+            baseUrl: state.agentConfig.baseUrl,
+            apiKey: state.agentConfig.apiKey,
+            temperature: Number(state.agentConfig.temperature ?? 0.4)
+          });
+          if (!result?.ok) {
+            throw new Error(result?.message || 'El plan no pudo ejecutarse.');
+          }
+
+          const changes = Array.isArray(result.data?.changes)
+            ? result.data.changes.filter((change) => change && typeof change.targetPath === 'string' && typeof change.patch === 'string')
+            : [];
+          state.pendingChanges = changes;
+          state.pendingChange = changes[0] || null;
+          state.pendingPatch = state.pendingChange?.patch || '';
+          state.pendingExecutionMetadata = result.data?.executionMetadata || null;
+          state.latestWorkflowTaskId = result.data?.runId || state.latestWorkflowTaskId;
+          state.latestWorkflowRun = result.data?.workflowRun || state.latestWorkflowRun;
+          renderWorkflowRun(state.latestWorkflowRun);
+          void refreshWorkflowActivity(state.latestWorkflowRun?.runId);
+          diffBox.textContent = changes.length > 0
+            ? changes.map((change) => change.patch).join('\n\n')
+            : 'El plan no produjo cambios estructurados para revisar.';
+          updateDiffSummary();
+          updateApprovalControls();
+          setWorkflowCancelable(false);
+          setAgentStatus('principal', 'online');
+          setStatus(changes.length > 0 ? 'Plan ejecutado; cambios listos para revisión' : 'Plan ejecutado sin cambios aplicables');
+          appendIdeaChatMessage('agent', 'El orquestador ejecutó el plan. Los cambios quedan pendientes de revisión y aprobación.');
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error ?? 'Unknown plan execution error');
+          setWorkflowCancelable(false);
+          setAgentStatus('principal', 'offline');
+          appendIdeaChatMessage('agent', `No se pudo ejecutar el plan: ${errorMessage}`);
+          setStatus('No se pudo ejecutar el plan');
+        } finally {
+          state.ideaChatPending = false;
+        }
+      }
+
+      async function restoreCurrentPlan() {
+        if (!state.currentPlanId || !window.electronAPI?.getPlan) {
+          return;
+        }
+
+        const result = await window.electronAPI.getPlan(state.currentPlanId);
+        if (result?.ok && result.data?.plan) {
+          renderPlanPreview(result.data.plan);
+          return;
+        }
+
+        state.currentPlanId = null;
+        state.currentPlanStatus = 'draft';
+        renderPlanPreview(null);
+      }
+
       function openConfigFromHeader() {
         openConfiguration();
       }
 
       async function triggerAgentWorkflow(customPrompt = null) {
+        if (state.ideaChatPending) {
+          return;
+        }
+
         const taskTitle = state.activeFile
           ? `Review active file: ${state.activeFile}`
           : 'Review workspace architecture';
         const promptText = String(customPrompt || taskTitle).trim();
         const runtimePrompt = customPrompt ? promptText : taskTitle;
         const flowMode = state.ideaFlowMode || 'proposal';
+        const activeIdeaSession = getActiveIdeaSession();
+        const historyBeforeMessage = activeIdeaSession.messages.slice(-8);
+        setIdeaChatPending(true);
 
         if (customPrompt && promptText) {
           appendIdeaChatMessage('user', promptText);
@@ -2650,160 +3132,98 @@
 
         if (flowMode === 'proposal') {
           const focusedPrompt = customPrompt || (state.activeFile ? `Quiero una propuesta específica para ${state.activeFile}` : 'Quiero una propuesta para mejorar el proyecto');
-          const localPreview = buildWorkflowPreview({
-            principalMessage: focusedPrompt,
-            fallbackPrompt: focusedPrompt
-          });
-          state.pendingPatch = '';
-          state.pendingChange = null;
-          state.pendingChanges = [];
-          state.pendingExecutionMetadata = null;
-          state.suggestions = buildLocalSuggestions(editor.value, state.activeFile);
+          if (!customPrompt) {
+            appendIdeaChatMessage('user', focusedPrompt);
+          }
+          clearPendingChangeState();
+          renderPlanPreview(null);
+          state.suggestions = [];
           renderCompletionSuggestions();
-          diffBox.textContent = `Propuesta: ${focusedPrompt}`;
-          updateDiffSummary();
-          approvalStatus.textContent = 'Propuesta lista';
-          approvalStatus.style.color = '#e2e8f0';
-          diffBox.style.borderColor = 'rgba(94, 162, 255, 0.28)';
-          updateApprovalControls();
-          updateWorkflowSummary('ideas', 'Propuesta lista');
+          updateWorkflowSummary('ideas', 'Consultando al agente de ideas');
           setWorkflowCancelable(false);
-          setStatus('Propuesta generada');
-          appendIdeaChatMessage('agent', 'He preparado una propuesta segura de revisión sin ejecutar cambios directos en el workspace.');
-          addAgentLog('Idea → Propuesta', `Modo: propuesta | ${focusedPrompt}`);
+          setAgentStatus('ideas', 'in-use');
+          setStatus('Consultando al agente de ideas...');
+
+          try {
+            const ideaModel = activeIdeaSession.model || state.agentConfig.model;
+            const result = await window.electronAPI.sendIdeaChatMessage({
+              sessionId: activeIdeaSession.id,
+              message: focusedPrompt,
+              history: historyBeforeMessage,
+              context: {
+                activeFile: state.activeFile,
+                activeFileContent: editor.value,
+                project: {
+                  name: state.config?.workspaceRoot || 'nexio-ide'
+                }
+              },
+              settings: {
+                provider: state.agentConfig.provider,
+                model: ideaModel,
+                baseUrl: state.agentConfig.baseUrl,
+                apiKey: state.agentConfig.apiKey,
+                temperature: Number(state.agentConfig.temperature ?? 0.4)
+              }
+            });
+            if (!result?.ok || !result.data?.message) {
+              throw new Error(result?.message || 'El agente de ideas no pudo responder.');
+            }
+
+            const responseText = result.data.message.trim();
+            appendIdeaChatMessage('agent', responseText);
+            state.latestWorkflowTaskId = result.data.metadata?.taskId ?? state.latestWorkflowTaskId;
+            addAgentLog('Idea → Chat', `Respuesta recibida: provider=${result.data.metadata?.provider ?? state.agentConfig.provider}, model=${result.data.metadata?.model ?? ideaModel}`);
+            updateWorkflowSummary('ideas', 'Respuesta lista');
+            setStatus('Respuesta de ideas recibida');
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error ?? 'Unknown idea chat error');
+            appendIdeaChatMessage('agent', `No se pudo obtener una respuesta del agente de ideas: ${errorMessage}`);
+            addAgentLog('Idea → Chat', `Error: ${errorMessage}`);
+            updateWorkflowSummary('ideas', 'Error en la respuesta');
+            setStatus('No se pudo consultar al agente de ideas');
+          } finally {
+            setAgentStatus('ideas', 'online');
+            setIdeaChatPending(false);
+            void syncPlanFromConversation(activeIdeaSession);
+          }
           return;
         }
 
-        setStatus('Procesando flujo de agentes...');
-        updateWorkflowSummary('planning', 'Procesando solicitud');
-        setWorkflowCancelable(true);
-        setAgentStatus('ideas', 'in-use');
-        setAgentStatus('planning', 'in-use');
-        setAgentStatus('principal', 'in-use');
-        addAgentLog('Idea → Planificación', `Solicitud recibida: ${promptText}`);
-        addAgentLog('Idea → Planificación', `Proveedor: ${state.agentConfig.provider} | Modelo: ${state.agentConfig.model} | Base URL: ${state.agentConfig.baseUrl}`);
-        console.log('[chat-debug] triggerAgentWorkflow', {
-          prompt: runtimePrompt,
+        setIdeaChatPending(false);
+      }
+
+      async function syncPlanFromConversation(session) {
+        if (!window.electronAPI?.syncPlan || state.ideaChatPending || !session.messages.some((message) => message.role === 'user')) {
+          return;
+        }
+
+        const model = session.model || state.agentConfig.model;
+        const settings = {
           provider: state.agentConfig.provider,
-          model: state.agentConfig.model,
+          model,
           baseUrl: state.agentConfig.baseUrl,
-          agent: state.agentConfig.agent,
-          activeFile: state.activeFile
+          apiKey: state.agentConfig.apiKey,
+          temperature: Number(state.agentConfig.temperature ?? 0.4)
+        };
+        const result = await window.electronAPI.syncPlan({
+          sessionId: session.id,
+          parentPlanId: state.currentPlanId || undefined,
+          sourceMessageIds: session.messages.slice(-16).map((message, index) => `${session.id}-${index}`),
+          transcript: {
+            sessionId: session.id,
+            messages: session.messages.slice(-16),
+            context: {
+              activeFile: state.activeFile,
+              activeFileContent: editor.value,
+              project: { name: state.config?.workspaceRoot || 'nexio-ide' }
+            },
+            settings
+          },
+          settings
         });
-        appendIdeaChatMessage('agent', `Estoy revisando tu solicitud...`);
-
-        try {
-          const activeIdeaSession = getActiveIdeaSession();
-          const ideaModel = activeIdeaSession.model || state.agentConfig.model;
-          const result = await window.electronAPI.runAgentWorkflow(runtimePrompt, state.activeFile, {
-            provider: state.agentConfig.provider,
-            agent: state.agentConfig.agent,
-            model: ideaModel,
-            ideaSessionId: activeIdeaSession.id,
-            ideaModel,
-            autoApproveChanges: state.autoApproveChanges,
-            baseUrl: state.agentConfig.baseUrl,
-            apiKey: state.agentConfig.apiKey,
-            temperature: Number(state.agentConfig.temperature ?? 0.4)
-          });
-          console.log('[chat-debug] runAgentWorkflow result', result);
-          if (!result || !result.ok) {
-            setAgentStatus('ideas', 'offline');
-            setAgentStatus('planning', 'offline');
-            setAgentStatus('principal', 'offline');
-            appendIdeaChatMessage('agent', result?.message || 'El flujo no pudo completarse.');
-            addAgentLog('Idea → Planificación', `Error del flujo: ${result?.message || 'sin detalle'}`);
-            return;
-          }
-
-          const llmText = typeof result.data?.llmResponse?.text === 'string' ? result.data.llmResponse.text.trim() : '';
-          addAgentLog('Planificación → Principal', `Respuesta del runtime: provider=${result.data?.llmResponse?.provider ?? state.agentConfig.provider}, model=${result.data?.llmResponse?.metadata?.model ?? state.agentConfig.model}`);
-          addAgentLog('Planificación → Principal', `Preview de respuesta LLM: ${llmText ? llmText.slice(0, 180) : 'sin respuesta'}`);
-          const ideaSuggestions = Array.isArray(result.data?.ideaResult?.data?.suggestions)
-            ? result.data.ideaResult.data.suggestions.filter(Boolean)
-            : [];
-          const autocompleteExamples = Array.isArray(result.data?.ideaResult?.data?.autocompleteExamples)
-            ? result.data.ideaResult.data.autocompleteExamples.filter(Boolean)
-            : [];
-          const roadmapTasks = Array.isArray(result.data?.planResult?.data?.roadmap?.tasks)
-            ? result.data.planResult.data.roadmap.tasks.filter(Boolean)
-            : [];
-          const principalMessage = result.data?.principalResult?.message ?? 'Ejecución lista para revisión.';
-
-          const preview = buildWorkflowPreview({
-            ideaSuggestions,
-            autocompleteExamples,
-            roadmapTasks,
-            principalMessage: llmText || principalMessage,
-            fallbackPrompt: customPrompt || (state.activeFile ? `Quiero ayuda para continuar en ${state.activeFile}` : 'Quiero sugerencias de autocompletado y ejemplos de código para el editor')
-          });
-
-          const generatedSuggestions = autocompleteExamples.length > 0
-            ? autocompleteExamples.map((example) => ({
-                label: String(example).split('\n')[0].slice(0, 38),
-                text: String(example)
-              }))
-            : buildLocalSuggestions(editor.value, state.activeFile);
-
-          state.suggestions = generatedSuggestions;
-          const structuredChanges = Array.isArray(result.data?.changes)
-            ? result.data.changes.filter((change) => change && typeof change.targetPath === 'string' && typeof change.patch === 'string')
-            : [];
-          state.pendingChange = structuredChanges[0] || null;
-          state.pendingChanges = structuredChanges;
-          state.pendingPatch = state.pendingChange?.patch || '';
-          state.pendingExecutionMetadata = result.data?.executionMetadata || null;
-          state.latestWorkflowTaskId = result?.data?.taskId ?? state.latestWorkflowTaskId ?? null;
-          renderCompletionSuggestions();
-
-          const assistantReply = `He pasado tu solicitud por el flujo de Ideas → Planificación → Orquestación → Ejecución. La propuesta ya está organizada para revisión y no se devolvió código directo en el chat.`;
-          appendIdeaChatMessage('agent', assistantReply);
-
-          console.log('[chat-debug] staged flow response rendered', {
-            hasLlmText: Boolean(llmText),
-            provider: result.data?.llmResponse?.provider ?? state.agentConfig.provider,
-            model: result.data?.llmResponse?.metadata?.model ?? state.agentConfig.model,
-            stageCount: Array.isArray(result.data?.stageLlmResponses) ? result.data.stageLlmResponses.length : 0,
-            preview: llmText.slice(0, 200)
-          });
-
-          addAgentLog('Planificación → Principal', principalMessage);
-          addAgentLog('Principal → Plugins', `Se ejecutaron ${roadmapTasks.length || 1} tareas del flujo principal.`);
-          diffBox.textContent = state.pendingChanges.length > 0
-            ? state.pendingChanges.map((change) => change.patch).join('\n\n')
-            : preview.taskPreview;
-          updateDiffSummary();
-          approvalStatus.textContent = result.data?.approvalStatus ?? 'Esperando revisión';
-          approvalStatus.style.color = '#e2e8f0';
-          diffBox.style.borderColor = 'rgba(148, 163, 184, 0.2)';
-          updateApprovalControls();
-          updateWorkflowSummary(
-            state.pendingChange ? 'review' : 'complete',
-            state.pendingChange ? 'Esperando revisión' : 'Sin cambios aplicables'
-          );
-          setWorkflowCancelable(false);
-          setStatus('Flujo completado');
-          setAgentStatus('ideas', 'online');
-          setAgentStatus('planning', 'online');
-          setAgentStatus('principal', 'online');
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error ?? 'Unknown runtime error');
-          console.error('[chat-debug] triggerAgentWorkflow error', {
-            message: errorMessage,
-            stack: error instanceof Error ? error.stack : undefined,
-            prompt: runtimePrompt,
-            provider: state.agentConfig.provider,
-            model: state.agentConfig.model,
-            baseUrl: state.agentConfig.baseUrl
-          });
-          setAgentStatus('ideas', 'offline');
-          setAgentStatus('planning', 'offline');
-          setAgentStatus('principal', 'offline');
-          updateWorkflowSummary('planning', 'Flujo fallido');
-          setWorkflowCancelable(false);
-          appendIdeaChatMessage('agent', `El flujo falló al invocar el runtime de escritorio: ${errorMessage}`);
-          addAgentLog('Idea → Planificación', `Error del agente: ${errorMessage}`);
-          setStatus('Workflow failed');
+        if (result?.ok && result.data?.plan && result.data.plan.status === 'ready' && state.currentPlanStatus !== 'handed_off') {
+          renderPlanPreview(result.data.plan);
+          addAgentLog('Ideas → Planificación', `Revisión automática lista: ${result.data.plan.planId}`);
         }
       }
 
@@ -3281,6 +3701,7 @@
           await loadPluginDefinitions();
           const config = await window.electronAPI.getConfig();
           state.config = config;
+          await restoreCurrentPlan();
 
           const workspace = await window.electronAPI.listWorkspace();
           state.workspace = workspace;
@@ -3509,6 +3930,45 @@
         }
       });
 
+      workflowPauseButton?.addEventListener('click', async () => {
+        const runId = state.latestWorkflowRun?.runId || state.latestWorkflowTaskId;
+        if (!runId || !window.electronAPI?.pauseWorkflow) {
+          return;
+        }
+        const result = await window.electronAPI.pauseWorkflow(runId);
+        setStatus(result?.message || 'Solicitud de pausa enviada.');
+      });
+
+      workflowResumeButton?.addEventListener('click', async () => {
+        const runId = state.latestWorkflowRun?.runId || state.latestWorkflowTaskId;
+        if (!runId || !window.electronAPI?.resumeWorkflow) {
+          return;
+        }
+        setStatus('Reanudando workflow...');
+        const result = await window.electronAPI.resumeWorkflow(runId);
+        if (result?.ok) {
+          state.latestWorkflowRun = result.data?.workflowRun || state.latestWorkflowRun;
+          setStatus('Workflow reanudado');
+        } else {
+          setStatus(result?.message || 'No se pudo reanudar el workflow');
+        }
+      });
+
+      workflowRetryButton?.addEventListener('click', async () => {
+        const runId = state.latestWorkflowRun?.runId || state.latestWorkflowTaskId;
+        const task = state.latestWorkflowRun?.tasks?.find((entry) => ['failed', 'retryable', 'blocked'].includes(entry.status));
+        if (!runId || !task || !window.electronAPI?.retryTask) {
+          return;
+        }
+        const result = await window.electronAPI.retryTask(runId, task.taskId);
+        if (!result?.ok) {
+          setStatus(result?.message || 'No se pudo reintentar la tarea');
+          return;
+        }
+        state.latestWorkflowRun = result.data?.run || state.latestWorkflowRun;
+        setStatus(`Tarea ${task.taskId} lista para reintento`);
+      });
+
       document.querySelector('.approve-btn').addEventListener('click', async () => {
         await decidePendingChange(true);
       });
@@ -3523,9 +3983,11 @@
       const agentLogModal = document.getElementById('agent-log-modal');
       const agentLogClose = document.getElementById('agent-log-close');
       const ideaSessionSelect = document.getElementById('idea-session-select');
-      const ideaFlowModeSelect = document.getElementById('idea-flow-mode-select');
       const ideasModelSelect = document.getElementById('ideas-model-select');
       const newIdeaSessionButton = document.getElementById('new-idea-session-btn');
+      const generatePlanButton = document.getElementById('generate-plan-button');
+      const handoffPlanButton = document.getElementById('handoff-plan-button');
+      const executePlanButton = document.getElementById('execute-plan-button');
       const autoApproveToggle = document.getElementById('auto-approve-toggle');
       const pluginConfigButton = document.getElementById('plugin-config-button');
 
@@ -3552,11 +4014,6 @@
         saveIdeaSessions();
       });
 
-      ideaFlowModeSelect?.addEventListener('change', (event) => {
-        state.ideaFlowMode = event.target.value;
-        saveIdeaSessions();
-      });
-
       ideasModelSelect?.addEventListener('change', (event) => {
         const session = getActiveIdeaSession();
         session.model = event.target.value;
@@ -3566,6 +4023,18 @@
 
       newIdeaSessionButton?.addEventListener('click', () => {
         createIdeaSession();
+      });
+
+      generatePlanButton?.addEventListener('click', () => {
+        void generatePlanFromIdeas();
+      });
+
+      handoffPlanButton?.addEventListener('click', () => {
+        void handoffCurrentPlan();
+      });
+
+      executePlanButton?.addEventListener('click', () => {
+        void executeCurrentPlan();
       });
 
       autoApproveToggle?.addEventListener('change', (event) => {
@@ -3598,6 +4067,9 @@
       });
 
       promptSubmit.addEventListener('click', async () => {
+        if (state.ideaChatPending) {
+          return;
+        }
         const promptValue = promptInput.value.trim();
         if (!promptValue) {
           return;
@@ -3613,6 +4085,10 @@
 
       promptInput.addEventListener('keydown', async (event) => {
         if (event.key === 'Enter') {
+          event.preventDefault();
+          if (state.ideaChatPending) {
+            return;
+          }
           const promptValue = promptInput.value.trim();
           if (!promptValue) {
             return;
@@ -3642,6 +4118,7 @@
       });
 
       window.addEventListener('DOMContentLoaded', () => {
+        initializePanelLayout();
         renderAgentStatuses();
         renderAgentLogsModal();
         window.electronAPI?.onWorkflowEvent?.(handleWorkflowEvent);

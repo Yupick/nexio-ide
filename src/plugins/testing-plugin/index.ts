@@ -16,7 +16,7 @@ export default function createPlugin(context: PluginContext): PluginInstance {
         message: `Testing plugin validated ${task.title}.`,
         data: {
           taskId: task.id,
-          plugin: 'testing',
+          plugin: 'testing-plugin',
           contextRoot: context?.snapshot?.rootPath ?? 'unknown'
         }
       };
